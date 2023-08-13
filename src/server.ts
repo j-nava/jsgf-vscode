@@ -1,7 +1,3 @@
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
 import {
 	createConnection,
 	TextDocuments,
@@ -15,11 +11,11 @@ import {
 	TextDocumentPositionParams,
 	TextDocumentSyncKind,
 	InitializeResult
-} from 'vscode-languageserver/node';
+} from "vscode-languageserver/node";
 
 import {
 	TextDocument
-} from 'vscode-languageserver-textdocument';
+} from "vscode-languageserver-textdocument";
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -75,7 +71,7 @@ connection.onInitialized(() => {
 	}
 	if (hasWorkspaceFolderCapability) {
 		connection.workspace.onDidChangeWorkspaceFolders(_event => {
-			connection.console.log('Workspace folder change event received.');
+			connection.console.log("Workspace folder change event received.");
 		});
 	}
 });
@@ -116,7 +112,7 @@ function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
 	if (!result) {
 		result = connection.workspace.getConfiguration({
 			scopeUri: resource,
-			section: "languageServerExample"
+			section: "jsgf"
 		});
 		documentSettings.set(resource, result);
 	}

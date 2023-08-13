@@ -1,7 +1,9 @@
 {
-	"name": "lsp-sample",
-	"description": "A language server example",
+	"name": "jsgf-support",
+  "displayName": "JSGF Support",
+	"description": "JSGF (JSpeech Grammar Format) support",
 	"author": "Jesse Nava",
+  "publisher": "j-nava",
 	"license": "MIT",
 	"version": "0.1.0",
 	"repository": {
@@ -10,24 +12,30 @@
 	},
 	"categories": [],
 	"keywords": [
-		"multi-root ready"
+		"jsgf jspeech"
 	],
-	"activationEvents": [
-		"onLanguage:plaintext"
-	],
+  "activationEvents": [
+  ],
 	"main": "./build/exec/extension.js",
 	"contributes": {
+    "languages": [
+      { "id": "jsgf",
+        "aliases": ["jspeech"],
+        "extensions": [".jsgf"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
 		"configuration": {
 			"type": "object",
 			"title": "Example configuration",
 			"properties": {
-				"languageServerExample.maxNumberOfProblems": {
+				"jsgf.maxNumberOfProblems": {
 					"scope": "resource",
 					"type": "number",
 					"default": 100,
 					"description": "Controls the maximum number of problems produced by the server."
 				},
-				"languageServerExample.trace.server": {
+				"jsgf.trace.server": {
 					"scope": "window",
 					"type": "string",
 					"enum": [
