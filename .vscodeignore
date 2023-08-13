@@ -1,0 +1,11 @@
+.vscode/**
+.vscode-test/**
+.gitignore
+node_modules/**
+build/**
+src/**
+*.ipkg
+tsconfig.json
+Makefile
+INSTALL.md
+!build/exec/extension.js

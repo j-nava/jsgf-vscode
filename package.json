@@ -1,0 +1,65 @@
+{
+	"name": "lsp-sample",
+	"description": "A language server example",
+	"author": "Jesse Nava",
+	"license": "MIT",
+	"version": "0.1.0",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/j-nava/jsgf-vscode"
+	},
+	"categories": [],
+	"keywords": [
+		"multi-root ready"
+	],
+	"engines": {
+		"vscode": "latest"
+	},
+	"activationEvents": [
+		"onLanguage:plaintext"
+	],
+	"main": "./build/exec/extension.js",
+	"contributes": {
+		"configuration": {
+			"type": "object",
+			"title": "Example configuration",
+			"properties": {
+				"languageServerExample.maxNumberOfProblems": {
+					"scope": "resource",
+					"type": "number",
+					"default": 100,
+					"description": "Controls the maximum number of problems produced by the server."
+				},
+				"languageServerExample.trace.server": {
+					"scope": "window",
+					"type": "string",
+					"enum": [
+						"off",
+						"messages",
+						"verbose"
+					],
+					"default": "off",
+					"description": "Traces the communication between VS Code and the language server."
+				}
+			}
+		}
+	},
+	"scripts": {
+    "vscode:prepublish": "npm install && npm run compile",
+    "compile": "npx tsc -b",
+    "watch": "npx tsc -b -w",
+    "bundle": "npx esbuild ./build/exec/extension.js --bundle --minify --allow-overwrite --outfile=build/exec/extension.js --external:vscode --format=cjs --platform=node"
+  },
+	"dependencies": {
+		"vscode-languageclient": "latest",
+		"vscode-languageserver": "latest",
+		"vscode-languageserver-textdocument": "latest"
+	},
+	"devDependencies": {
+		"@types/vscode": "latest",
+		"@types/node": "latest",
+		"typescript": "latest",
+    "esbuild": "latest",
+    "vsce": "latest"
+	}
+}
