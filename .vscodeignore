@@ -8,4 +8,4 @@ src/**
 tsconfig.json
 Makefile
 INSTALL.md
-!build/exec/extension.js
+!build/exec/*.js

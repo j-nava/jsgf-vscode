@@ -12,9 +12,6 @@
 	"keywords": [
 		"multi-root ready"
 	],
-	"engines": {
-		"vscode": "latest"
-	},
 	"activationEvents": [
 		"onLanguage:plaintext"
 	],
@@ -50,16 +47,19 @@
     "watch": "npx tsc -b -w",
     "bundle": "npx esbuild ./build/exec/extension.js --bundle --minify --allow-overwrite --outfile=build/exec/extension.js --external:vscode --format=cjs --platform=node"
   },
+	"engines": {
+		"vscode": "^1.75.0"
+	},
 	"dependencies": {
-		"vscode-languageclient": "latest",
-		"vscode-languageserver": "latest",
-		"vscode-languageserver-textdocument": "latest"
+		"vscode-languageclient": "^8.1.0",
+		"vscode-languageserver": "^8.1.0",
+		"vscode-languageserver-textdocument": "^1.0.8"
 	},
 	"devDependencies": {
-		"@types/vscode": "latest",
-		"@types/node": "latest",
-		"typescript": "latest",
-    "esbuild": "latest",
-    "vsce": "latest"
+		"@types/vscode": "^1.81.0",
+		"@types/node": "^20.5.0",
+    "@vscode/vsce": "^2.20.1",
+		"typescript": "^5.1.6",
+    "esbuild": "^0.19.1"
 	}
 }

@@ -25,7 +25,7 @@ modules
 main = VSCode.Extension
 
 -- name of executable
-executable = "extension.js"
+executable = "lib.js"
 -- opts =
 sourcedir = "src"
 -- builddir =
