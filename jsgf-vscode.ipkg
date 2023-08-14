@@ -16,10 +16,18 @@ authors = "Jesse Nava"
 depends
   = base
   , contrib
+  , elab-util
+  , prettier
 
 -- modules to install
 modules
   = VSCode.Extension
+  , Text.JSGF.Types
+  , Text.JSGF.Token
+  , Text.JSGF.Lexer
+  , Text.JSGF.Parser
+  , Text.JSGF.Print
+  , Text.JSGF
 
 -- main file (i.e. file to load at REPL)
 main = VSCode.Extension
