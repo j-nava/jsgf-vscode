@@ -8,15 +8,15 @@ import Text.JSGF.Lexer
 import Text.JSGF.Parser
 
 export
-jsgfParse : String -> Either String MDDoc
-jsgfParse = buildResult . mdParse . mdLex
+jsgfParse : String -> Either String Doc
+jsgfParse = buildResult . jsgfParse . jsgfLex
 
   where
-  buildResult : Either (List1 (ParsingError MDToken)) MDDoc -> Either String MDDoc
+  buildResult : Either (List1 (ParsingError JSGFToken)) Doc -> Either String Doc
   buildResult = \case
     Right d => Right d
     Left err => Left $ show err
 
 export
-jsgfEmpty : MDDoc
-jsgfEmpty = Paragraph ((Textual "") ::: Nil) ::: Nil
+jsgfEmpty : Doc
+jsgfEmpty = BSpace ::: Nil

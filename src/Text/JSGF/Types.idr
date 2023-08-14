@@ -29,8 +29,17 @@ data MDBlock : {0 blockItem : MDBlockItem} -> Type where
   Indentation   : Nat -> List1 MDInline -> MDBlock { blockItem = AnyBlockItem }
 
 public export
-JSGFHeader : Type
+record SelfIdent where
+  constructor MkSelfIdent
+  version : String
+  charEncoding : Maybe String
+  locale : Maybe String
 
 public export
-JSGFGrammar : Type
-JSGFGrammar = JSGFHeader
+data Block : Type where
+  BSelfIdent : SelfIdent -> Block
+  BSpace     : Block
+
+public export
+Doc : Type
+Doc = List1 Block
