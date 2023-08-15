@@ -5,3 +5,4 @@ client/server
 .vscode-test
 *~
 package-lock.json
+src/lib.js

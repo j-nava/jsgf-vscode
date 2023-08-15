@@ -4,8 +4,9 @@ all: build
 
 build: 
 	idris2 --codegen node --build jsgf-vscode.ipkg
-	npm run compile
 	cat ./src/_exports.js >> ./build/exec/lib.js
+	cp ./build/exec/lib.js ./src/
+	npm run compile
 
 clean:
 	idris2 --clean jsgf-vscode.ipkg

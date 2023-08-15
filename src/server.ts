@@ -17,11 +17,10 @@ import {
 	TextDocument
 } from "vscode-languageserver-textdocument";
 
-// Create a connection for the server, using Node's IPC as a transport.
-// Also include all preview / proposed LSP features.
+import * as lib from "./lib";
+
 const connection = createConnection(ProposedFeatures.all);
 
-// Create a simple text document manager.
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 let hasConfigurationCapability = false;
@@ -130,53 +129,75 @@ documents.onDidChangeContent(change => {
 	validateTextDocument(change.document);
 });
 
+// async function validateTextDocument(textDocument: TextDocument): Promise<void> {
+// 	// In this simple example we get the settings for every validate run.
+// 	const settings = await getDocumentSettings(textDocument.uri);
+
+// 	// The validator creates diagnostics for all uppercase words length 2 and more
+// 	const text = textDocument.getText();
+// 	const pattern = /\b[A-Z]{2,}\b/g;
+// 	let m: RegExpExecArray | null;
+
+// 	let problems = 0;
+// 	const diagnostics: Diagnostic[] = [];
+// 	while ((m = pattern.exec(text)) && problems < settings.maxNumberOfProblems) {
+// 		problems++;
+// 		const diagnostic: Diagnostic = {
+// 			severity: DiagnosticSeverity.Warning,
+// 			range: {
+// 				start: textDocument.positionAt(m.index),
+// 				end: textDocument.positionAt(m.index + m[0].length)
+// 			},
+// 			message: `${m[0]} is all uppercase.`,
+// 			source: "ex"
+// 		};
+// 		if (hasDiagnosticRelatedInformationCapability) {
+// 			diagnostic.relatedInformation = [
+// 				{
+// 					location: {
+// 						uri: textDocument.uri,
+// 						range: Object.assign({}, diagnostic.range)
+// 					},
+// 					message: "Spelling matters"
+// 				},
+// 				{
+// 					location: {
+// 						uri: textDocument.uri,
+// 						range: Object.assign({}, diagnostic.range)
+// 					},
+// 					message: "Particularly for names"
+// 				}
+// 			];
+// 		}
+// 		diagnostics.push(diagnostic);
+// 	}
+
+// 	// Send the computed diagnostics to VSCode.
+// 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+// }
+
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
-	// In this simple example we get the settings for every validate run.
 	const settings = await getDocumentSettings(textDocument.uri);
 
-	// The validator creates diagnostics for all uppercase words length 2 and more
 	const text = textDocument.getText();
-	const pattern = /\b[A-Z]{2,}\b/g;
-	let m: RegExpExecArray | null;
-
-	let problems = 0;
 	const diagnostics: Diagnostic[] = [];
-	while ((m = pattern.exec(text)) && problems < settings.maxNumberOfProblems) {
-		problems++;
+
+  var result = lib.parse(text);
+  if (!lib.isSuccessful(result)) {
 		const diagnostic: Diagnostic = {
 			severity: DiagnosticSeverity.Warning,
 			range: {
-				start: textDocument.positionAt(m.index),
-				end: textDocument.positionAt(m.index + m[0].length)
+				start: textDocument.positionAt(0),
+				end: textDocument.positionAt(0)
 			},
-			message: `${m[0]} is all uppercase.`,
-			source: 'ex'
+			message: lib.getErrorMessage(result),
+			source: "ex"
 		};
-		if (hasDiagnosticRelatedInformationCapability) {
-			diagnostic.relatedInformation = [
-				{
-					location: {
-						uri: textDocument.uri,
-						range: Object.assign({}, diagnostic.range)
-					},
-					message: 'Spelling matters'
-				},
-				{
-					location: {
-						uri: textDocument.uri,
-						range: Object.assign({}, diagnostic.range)
-					},
-					message: 'Particularly for names'
-				}
-			];
-		}
-		diagnostics.push(diagnostic);
-	}
+    diagnostics.push(diagnostic);
+  }
 
-	// Send the computed diagnostics to VSCode.
 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
-
 connection.onDidChangeWatchedFiles(_change => {
 	// Monitored files have change in VSCode
 	connection.console.log('We received an file change event');
