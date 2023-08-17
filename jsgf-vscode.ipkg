@@ -21,7 +21,7 @@ depends
 
 -- modules to install
 modules
-  = VSCode.Extension
+  = Server 
   , Text.JSGF.Types
   , Text.JSGF.Token
   , Text.JSGF.Lexer
@@ -30,10 +30,10 @@ modules
   , Text.JSGF
 
 -- main file (i.e. file to load at REPL)
-main = VSCode.Extension
+main = Server 
 
 -- name of executable
-executable = "lib.js"
+executable = "server.js"
 -- opts =
 sourcedir = "src"
 -- builddir =

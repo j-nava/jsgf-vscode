@@ -4,7 +4,6 @@ all: build
 
 build: 
 	idris2 --codegen node --build jsgf-vscode.ipkg
-	cat ./src/_exports.js >> ./build/exec/extension.js
 	npm run compile
 
 clean:

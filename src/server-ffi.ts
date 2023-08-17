@@ -180,19 +180,19 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 	const text = textDocument.getText();
 	const diagnostics: Diagnostic[] = [];
 
-  var result = lib.parse(text);
-  if (!lib.isSuccessful(result)) {
-		const diagnostic: Diagnostic = {
-			severity: DiagnosticSeverity.Warning,
-			range: {
-				start: textDocument.positionAt(0),
-				end: textDocument.positionAt(0)
-			},
-			message: lib.getErrorMessage(result),
-			source: "ex"
-		};
-    diagnostics.push(diagnostic);
-  }
+  // var result = lib.parse(text);
+  // if (!lib.isSuccessful(result)) {
+	// 	const diagnostic: Diagnostic = {
+	// 		severity: DiagnosticSeverity.Warning,
+	// 		range: {
+	// 			start: textDocument.positionAt(0),
+	// 			end: textDocument.positionAt(0)
+	// 		},
+	// 		message: lib.getErrorMessage(result),
+	// 		source: "ex"
+	// 	};
+  //   diagnostics.push(diagnostic);
+  // }
 
 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
