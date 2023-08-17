@@ -18,10 +18,19 @@ import {
 	TextDocument
 } from "vscode-languageserver-textdocument";
 
+const defaultSettings: ExampleSettings = { maxNumberOfProblems: 1000 };
+
 interface State {
   connection: _Connection,
-  documents: TextDocuments<TextDocument>
+  documents: TextDocuments<TextDocument>,
+  hasConfigurationCapability: Boolean,
+  documentSettings: Map<string, Thenable<ExampleSettings>>,
+  globalSettings: ExampleSettings
 };
+
+interface ExampleSettings {
+  maxNumberOfProblems: number;
+}
 
 export function load(): State {
   const connection = createConnection(ProposedFeatures.all);
@@ -79,33 +88,13 @@ export function load(): State {
     }
   });
 
-  // The example settings
-  interface ExampleSettings {
-    maxNumberOfProblems: number;
-  }
-
   // The global settings, used when the `workspace/configuration` request is not supported by the client.
   // Please note that this is not the case when using this server with the client provided in this example
   // but could happen with other clients.
-  const defaultSettings: ExampleSettings = { maxNumberOfProblems: 1000 };
   let globalSettings: ExampleSettings = defaultSettings;
 
   // Cache the settings of all open documents
   const documentSettings: Map<string, Thenable<ExampleSettings>> = new Map();
-
-  connection.onDidChangeConfiguration(change => {
-    if (hasConfigurationCapability) {
-      // Reset all cached document settings
-      documentSettings.clear();
-    } else {
-      globalSettings = <ExampleSettings>(
-        (change.settings.languageServerExample || defaultSettings)
-      );
-    }
-
-    // Revalidate all open text documents
-    documents.all().forEach(validateTextDocument);
-  });
 
   function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
     if (!hasConfigurationCapability) {
@@ -125,12 +114,6 @@ export function load(): State {
   // Only keep settings for open documents
   documents.onDidClose(e => {
     documentSettings.delete(e.document.uri);
-  });
-
-  // The content of a text document has changed. This event is emitted
-  // when the text document first opened or when its content has changed.
-  documents.onDidChangeContent(change => {
-    validateTextDocument(change.document);
   });
 
   // async function validateTextDocument(textDocument: TextDocument): Promise<void> {
@@ -180,31 +163,9 @@ export function load(): State {
   // 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
   // }
 
-  async function validateTextDocument(textDocument: TextDocument): Promise<void> {
-    const settings = await getDocumentSettings(textDocument.uri);
-
-    const text = textDocument.getText();
-    const diagnostics: Diagnostic[] = [];
-
-    // var result = lib.parse(text);
-    // if (!lib.isSuccessful(result)) {
-    // 	const diagnostic: Diagnostic = {
-    // 		severity: DiagnosticSeverity.Warning,
-    // 		range: {
-    // 			start: textDocument.positionAt(0),
-    // 			end: textDocument.positionAt(0)
-    // 		},
-    // 		message: lib.getErrorMessage(result),
-    // 		source: "ex"
-    // 	};
-    //   diagnostics.push(diagnostic);
-    // }
-
-    connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
-  }
   connection.onDidChangeWatchedFiles(_change => {
     // Monitored files have change in VSCode
-    connection.console.log('We received an file change event');
+    connection.console.log('We received a file change event');
   });
 
   // This handler provides the initial list of the completion items.
@@ -246,11 +207,55 @@ export function load(): State {
   // Make the text document manager listen on the connection
   // for open, change and close text document events
   documents.listen(connection);
-  return { connection, documents };
+  return { connection, documents, hasConfigurationCapability, documentSettings, globalSettings };
   
 }
 
 export function start(state: State) {
   // Listen on the connection
   state.connection.listen();
+}
+
+export function onChangeConfig(state: State, f: (state: State) => (textDocument: TextDocument) => () => Promise<void>) {
+  state.connection.onDidChangeConfiguration(change => {
+    if (state.hasConfigurationCapability) {
+      // Reset all cached document settings
+      state.documentSettings.clear();
+    } else {
+      state.globalSettings = <ExampleSettings>(
+        (change.settings.languageServerExample || defaultSettings)
+      );
+    }
+
+    // Revalidate all open text documents
+    state.documents.all().forEach((doc) => f(state)(doc)());
+  });
+}
+
+export function onChange(state: State, f: (state: State) => (textDocument: TextDocument) => () => Promise<void>) {
+  state.documents.onDidChangeContent(change => {
+    state.connection.console.log("CHANGE");
+    // state.connection.console.log(f(state)(change.document));
+    f(state)(change.document)();
+  });
+}
+
+export function getText(textDocument: TextDocument): String {
+  return textDocument.getText();
+}
+
+export function sendDiagnostics(state: State, textDocument: TextDocument, message: string) {
+  const diagnostics: Diagnostic[] = [];
+  const diagnostic: Diagnostic = {
+  	severity: DiagnosticSeverity.Warning,
+  	range: {
+  		start: textDocument.positionAt(0),
+  		end: textDocument.positionAt(0)
+  	},
+  	message: message,
+  	source: "ex"
+  };
+  diagnostics.push(diagnostic);
+  state.connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+  console.log("DIAG");
 }
