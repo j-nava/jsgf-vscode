@@ -17,8 +17,6 @@ import {
 	TextDocument
 } from "vscode-languageserver-textdocument";
 
-import * as lib from "./lib";
-
 const connection = createConnection(ProposedFeatures.all);
 
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);

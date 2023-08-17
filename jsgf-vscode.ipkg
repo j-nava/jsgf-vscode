@@ -18,7 +18,6 @@ depends
   , contrib
   , elab-util
   , prettier
-  , ffiderive
 
 -- modules to install
 modules

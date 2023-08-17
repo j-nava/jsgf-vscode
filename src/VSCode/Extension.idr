@@ -2,19 +2,24 @@ module VSCode.Extension
 
 import Text.JSGF
 
-%export "javascript:parse"
-parse : String -> ParseResult
-parse = jsgfParse
+public export
+ExtensionContext : Type
+ExtensionContext = AnyPtr
 
-%export "javascript:isSuccessful"
-isSuccessful : ParseResult -> Bool
-isSuccessful (Left _) = False
-isSuccessful (Right _) = True
+%foreign "javascript:lambda:(context) => require('./client').activate(context)"
+export prim__activate : ExtensionContext -> PrimIO ()
+%foreign "javascript:lambda:() => require('./client').deactivate()"
+export prim__deactivate : PrimIO ()
 
-%export "javascript:getErrorMessage"
-getErrors : ParseResult -> String
-getErrors (Left e) = e 
-getErrors (Right _) = [] 
+%export "javascript:activate"
+activate : ExtensionContext -> ()
+activate context = unsafePerformIO $ do
+  primIO (prim__activate context)
+
+%export "javascript:deactivate"
+deactivate : ()
+deactivate = unsafePerformIO $ do
+  primIO prim__deactivate
 
 main : IO ()
 main = pure ()
