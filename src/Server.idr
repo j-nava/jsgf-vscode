@@ -26,13 +26,14 @@ export prim__showInformationMessage : State -> String -> PrimIO ()
 validate : State -> TextDocument -> IO ()
 validate state doc = do
   text <- primIO (prim__getText doc)
-  primIO (prim__sendDiagnostics state doc "blabla err")
+  case jsgfParseDoc text of
+    Left errors => primIO (prim__sendDiagnostics state doc (show errors))
+    Right doc => pure ()
 
 main : IO ()
 main = do
   state <- primIO (prim__load)
   primIO (prim__start state)
-  primIO (prim__showInformationMessage state "STARTED")
   primIO (prim__onChangeConfig state validate)
   primIO (prim__onChange state validate)
 
