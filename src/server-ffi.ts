@@ -165,7 +165,7 @@ export function load(): State {
 
   connection.onDidChangeWatchedFiles(_change => {
     // Monitored files have change in VSCode
-    connection.console.log('We received a file change event');
+    connection.console.log("We received a file change event");
   });
 
   // This handler provides the initial list of the completion items.
@@ -234,13 +234,11 @@ export function onChangeConfig(state: State, f: (state: State) => (textDocument:
 
 export function onChange(state: State, f: (state: State) => (textDocument: TextDocument) => () => Promise<void>) {
   state.documents.onDidChangeContent(change => {
-    state.connection.console.log("CHANGE");
-    // state.connection.console.log(f(state)(change.document));
     f(state)(change.document)();
   });
 }
 
-export function getText(textDocument: TextDocument): String {
+export function getText(textDocument: TextDocument): string {
   return textDocument.getText();
 }
 
@@ -257,5 +255,8 @@ export function sendDiagnostics(state: State, textDocument: TextDocument, messag
   };
   diagnostics.push(diagnostic);
   state.connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
-  console.log("DIAG");
+}
+
+export function showInformationMessage(state: State, message: string) {
+  state.connection.window.showInformationMessage(message);
 }

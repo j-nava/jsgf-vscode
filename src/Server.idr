@@ -16,10 +16,12 @@ export prim__start : State -> PrimIO ()
 export prim__onChangeConfig : State -> (State -> TextDocument -> IO ()) -> PrimIO ()
 %foreign "javascript:lambda:(state, f) => require('./server-ffi').onChange(state, f)"
 export prim__onChange : State -> (State -> TextDocument -> IO ()) -> PrimIO ()
-%foreign "javascript:lambda:(document) => require('./server-ffi').getText()"
+%foreign "javascript:lambda:(document) => require('./server-ffi').getText(document)"
 export prim__getText : TextDocument -> PrimIO String
 %foreign "javascript:lambda:(state, document, message) => require('./server-ffi').sendDiagnostics(state, document, message)"
 export prim__sendDiagnostics : State -> TextDocument -> (message : String) -> PrimIO ()
+%foreign "javascript:lambda:(state, message) => require('./server-ffi').showInformationMessage(state, message)"
+export prim__showInformationMessage : State -> String -> PrimIO ()
 
 validate : State -> TextDocument -> IO ()
 validate state doc = do
@@ -30,6 +32,7 @@ main : IO ()
 main = do
   state <- primIO (prim__load)
   primIO (prim__start state)
+  primIO (prim__showInformationMessage state "STARTED")
   primIO (prim__onChangeConfig state validate)
   primIO (prim__onChange state validate)
 
