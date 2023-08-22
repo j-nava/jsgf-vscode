@@ -18,8 +18,8 @@ export prim__onChangeConfig : State -> (State -> TextDocument -> IO ()) -> PrimI
 export prim__onChange : State -> (State -> TextDocument -> IO ()) -> PrimIO ()
 %foreign "javascript:lambda:(document) => require('./server-ffi').getText(document)"
 export prim__getText : TextDocument -> PrimIO String
-%foreign "javascript:lambda:(state, document, message) => require('./server-ffi').sendDiagnostics(state, document, message)"
-export prim__sendDiagnostics : State -> TextDocument -> (message : String) -> PrimIO ()
+%foreign "javascript:lambda:(isError, state, document, message, startLine, startCol, endLine, endCol) => require('./server-ffi').sendDiagnostics(isError, state, document, message, startLine, startCol, endLine, endCol)"
+export prim__sendDiagnostics : State -> Bool -> TextDocument -> (message : String) -> (startLine : Int) -> (startCol : Int) -> (endLine : Int) -> (endCol: Int) -> PrimIO ()
 %foreign "javascript:lambda:(state, message) => require('./server-ffi').showInformationMessage(state, message)"
 export prim__showInformationMessage : State -> String -> PrimIO ()
 
@@ -27,8 +27,15 @@ validate : State -> TextDocument -> IO ()
 validate state doc = do
   text <- primIO (prim__getText doc)
   case jsgfParseDoc text of
-    Left errors => primIO (prim__sendDiagnostics state doc (show errors))
+    Left errors => traverse_ processError errors
     Right doc => pure ()
+
+  where
+    processError : ParsingError (Token JSGFTokenKind) -> IO ()
+    processError e@(Error message (Just bounds)) =
+      primIO (prim__sendDiagnostics state True doc (show e) bounds.startLine bounds.startCol bounds.endLine bounds.endCol)
+    processError e@(Error message Nothing) = 
+      primIO (prim__sendDiagnostics state True doc (show e) 0 0 0 0)
 
 main : IO ()
 main = do

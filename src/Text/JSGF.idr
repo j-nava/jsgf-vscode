@@ -16,6 +16,6 @@ export
 jsgfParseDoc : String -> ParseResult
 jsgfParseDoc = jsgfParse . jsgfLex
 
-export
-jsgfEmpty : Doc
-jsgfEmpty = BSpace ::: Nil
+-- export
+-- jsgfEmpty : Doc
+-- jsgfEmpty = BSpace ::: Nil

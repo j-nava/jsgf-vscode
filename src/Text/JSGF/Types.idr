@@ -29,16 +29,19 @@ data MDBlock : {0 blockItem : MDBlockItem} -> Type where
   Indentation   : Nat -> List1 MDInline -> MDBlock { blockItem = AnyBlockItem }
 
 public export
+PType : Type -> Type
+PType a = (a, Maybe String)
+
+public export
 record SelfIdent where
   constructor MkSelfIdent
-  version : String
-  charEncoding : Maybe String
-  locale : Maybe String
+  version : PType String
+  charEncoding : Maybe (PType String)
+  locale : Maybe (PType String)
 
 public export
 data Block : Type where
   BSelfIdent : SelfIdent -> Block
-  BSpace     : Block
 
 public export
 Doc : Type

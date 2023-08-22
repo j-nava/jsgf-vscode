@@ -26,7 +26,6 @@ import Text.JSGF.Types
 Pretty Block where
   prettyPrec _ = \case
     BSelfIdent selfIdent => line ""
-    BSpace => line ""
 
 Pretty Doc where
   prettyPrec _ jsgf = vsep (pretty <$> forget jsgf)

@@ -10,11 +10,10 @@ import Derive.Show
 
 public export
 data JSGFTokenKind
-  = JSGFText
+  = JSGFDash
   | JSGFSpace
   | JSGFDot
-  | JSGFLineBreak
-  | JSGFTab
+  | JSGFSemi
   | JSGFLBracket
   | JSGFRBracket
   | JSGFLAngBracket
@@ -23,44 +22,39 @@ data JSGFTokenKind
   | JSGFRCurlyBracket
   | JSGFLParens
   | JSGFRParens
-
-  -- | MDBacktick
-  -- | MDAsterisk
-  -- | MDUnderscore
-  -- | MDHash
-  -- | MDDash
+  | JSGFText
 
 %runElab derive "JSGFTokenKind" [Eq,Show]
 
 public export
 TokenKind JSGFTokenKind where
-  TokType JSGFText = String
+  TokType JSGFDash = ()
   TokType JSGFSpace = String
-  TokType JSGFDot = String
-  TokType JSGFLineBreak = String
-  TokType JSGFTab = String
-  TokType JSGFLBracket = String
-  TokType JSGFRBracket = String
-  TokType JSGFLAngBracket = String
-  TokType JSGFRAngBracket = String
-  TokType JSGFLCurlyBracket = String
-  TokType JSGFRCurlyBracket = String
-  TokType JSGFLParens = String
-  TokType JSGFRParens = String
+  TokType JSGFDot = ()
+  TokType JSGFSemi = ()
+  TokType JSGFLBracket = ()
+  TokType JSGFRBracket = ()
+  TokType JSGFLAngBracket = ()
+  TokType JSGFRAngBracket = ()
+  TokType JSGFLCurlyBracket = ()
+  TokType JSGFRCurlyBracket = ()
+  TokType JSGFLParens = ()
+  TokType JSGFRParens = ()
+  TokType JSGFText = String
 
+  tokValue JSGFDash _ = ()
+  tokValue JSGFSpace s = s
+  tokValue JSGFDot _ = ()
+  tokValue JSGFSemi _ = ()
+  tokValue JSGFLBracket _ = ()
+  tokValue JSGFRBracket _ = ()
+  tokValue JSGFLAngBracket _ = () 
+  tokValue JSGFRAngBracket _ = ()
+  tokValue JSGFLCurlyBracket _ = ()
+  tokValue JSGFRCurlyBracket _ = ()
+  tokValue JSGFLParens _ = ()
+  tokValue JSGFRParens _ = ()
   tokValue JSGFText s = s
-  tokValue JSGFSpace _ = " "
-  tokValue JSGFDot _ = "."
-  tokValue JSGFLineBreak s = s
-  tokValue JSGFTab _ = "\t"
-  tokValue JSGFLBracket _ = "]"
-  tokValue JSGFRBracket _ = "]"
-  tokValue JSGFLAngBracket _ = "<"
-  tokValue JSGFRAngBracket _ = ">"
-  tokValue JSGFLCurlyBracket _ = "{"
-  tokValue JSGFRCurlyBracket _ = "}"
-  tokValue JSGFLParens _ = "("
-  tokValue JSGFRParens _ = ")"
 
 public export
 JSGFToken : Type

@@ -107,18 +107,36 @@ import Text.JSGF.Types
 -- block : Grammar state MDToken True (MDBlock { blockItem = AnyBlockItem })
 -- block = ilist <|> leafBlock
 
+matchtok : TokenKind JSGFTokenKind => Eq JSGFTokenKind => (kind : JSGFTokenKind) -> Grammar state (Token JSGFTokenKind) True (TokType kind, Maybe (TokType JSGFSpace))
+matchtok tok = do
+  v <- match tok
+  pure (v, Nothing)
+
+matchsp : TokenKind JSGFTokenKind => Eq JSGFTokenKind => (kind : JSGFTokenKind) -> Grammar state (Token JSGFTokenKind) True (TokType kind, Maybe (TokType JSGFSpace))
+matchsp tok = do
+  sp <- optional (match JSGFSpace)
+  v <- match tok
+  pure (v, sp)
+
 selfIdent : Grammar state JSGFToken True SelfIdent
 selfIdent = do
-  gg <- match JSGFSpace
-  pure (MkSelfIdent "" Nothing Nothing)
+  dash <- matchsp JSGFDash
+  version <- matchsp JSGFText
+  encoding <- optional (matchsp JSGFText)
+  locale <- optional (matchsp JSGFText)
+  end <- matchsp JSGFSemi
+  pure (MkSelfIdent version encoding locale)
 
-block : Grammar state JSGFToken True Block
-block = do
-  gg <- match JSGFSpace
-  pure (BSelfIdent !selfIdent)
+-- block : Grammar state JSGFToken True Block
+-- block = do
+--   gg <- match JSGFSpace
+--   pure (BSelfIdent !selfIdent)
 
 doc : Grammar state JSGFToken True Doc
-doc = pure !(some block)
+doc = do 
+  si <- selfIdent
+  pure (BSelfIdent si ::: Nil)
+  -- pure !(some block)
 
 export
 jsgfParse : List (WithBounds JSGFToken) -> Either (List1 (ParsingError JSGFToken)) Doc

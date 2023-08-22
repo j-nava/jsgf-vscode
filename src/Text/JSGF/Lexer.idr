@@ -3,9 +3,12 @@ module Text.JSGF.Lexer
 import Text.Lexer
 import Text.JSGF.Token
 
+text : Lexer
+text = someUntil (oneOf "[]<>{}().#;" <|> spaces) any -- pred (> chr 160) <|> alphaNum
+
 tokenMap : TokenMap JSGFToken
 tokenMap = toTokenMap
-  [ (is ' ',  JSGFSpace)
+  [ (spaces,  JSGFSpace)
   , (is '[',  JSGFLBracket)
   , (is ']',  JSGFRBracket)
   , (is '<',  JSGFLAngBracket)
@@ -14,10 +17,10 @@ tokenMap = toTokenMap
   , (is '}',  JSGFRCurlyBracket)
   , (is '(',  JSGFLParens)
   , (is ')',  JSGFRParens)
-  , (is '\t', JSGFTab)
   , (is '.',  JSGFDot)
-  , (newline, JSGFLineBreak)
-  , (any,     JSGFText)
+  , (is '#',  JSGFDash)
+  , (is ';',  JSGFSemi)
+  , (text,    JSGFText)
   ]
 
 export

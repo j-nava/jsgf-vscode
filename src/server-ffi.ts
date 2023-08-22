@@ -15,7 +15,7 @@ import {
 } from "vscode-languageserver/node";
 
 import {
-	TextDocument
+	TextDocument,
 } from "vscode-languageserver-textdocument";
 
 const defaultSettings: ExampleSettings = { maxNumberOfProblems: 1000 };
@@ -242,14 +242,14 @@ export function getText(textDocument: TextDocument): string {
   return textDocument.getText();
 }
 
-export function sendDiagnostics(state: State, textDocument: TextDocument, message: string) {
+export function sendDiagnostics(state: State, isError: boolean, textDocument: TextDocument, message: string, startLine: number, startCol: number, endLine: number, endCol: number) {
   const diagnostics: Diagnostic[] = [];
   const diagnostic: Diagnostic = {
-  	severity: DiagnosticSeverity.Warning,
-  	range: {
-  		start: textDocument.positionAt(0),
-  		end: textDocument.positionAt(0)
-  	},
+  	severity: isError ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning,
+    range: {
+      start: { line: startLine, character: startCol},
+      end: { line: endLine, character: endCol}
+    },
   	message: message,
   	source: "ex"
   };
