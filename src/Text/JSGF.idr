@@ -15,7 +15,3 @@ ParseResult = Either (List1 (ParsingError JSGFToken)) Doc
 export
 jsgfParseDoc : String -> ParseResult
 jsgfParseDoc = jsgfParse . jsgfLex
-
--- export
--- jsgfEmpty : Doc
--- jsgfEmpty = BSpace ::: Nil

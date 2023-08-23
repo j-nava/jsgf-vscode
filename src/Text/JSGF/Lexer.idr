@@ -8,19 +8,19 @@ text = someUntil (oneOf "[]<>{}().#;" <|> spaces) any -- pred (> chr 160) <|> al
 
 tokenMap : TokenMap JSGFToken
 tokenMap = toTokenMap
-  [ (spaces,  JSGFSpace)
-  , (is '[',  JSGFLBracket)
-  , (is ']',  JSGFRBracket)
-  , (is '<',  JSGFLAngBracket)
-  , (is '>',  JSGFRAngBracket)
-  , (is '{',  JSGFLCurlyBracket)
-  , (is '}',  JSGFRCurlyBracket)
-  , (is '(',  JSGFLParens)
-  , (is ')',  JSGFRParens)
-  , (is '.',  JSGFDot)
-  , (is '#',  JSGFDash)
-  , (is ';',  JSGFSemi)
-  , (text,    JSGFText)
+  [ (spaces,         JSGFSpace)
+  , (exact "#JSGF",  JSGFSignature)
+  , (is '[',         JSGFLBracket)
+  , (is ']',         JSGFRBracket)
+  , (is '<',         JSGFLAngBracket)
+  , (is '>',         JSGFRAngBracket)
+  , (is '{',         JSGFLCurlyBracket)
+  , (is '}',         JSGFRCurlyBracket)
+  , (is '(',         JSGFLParens)
+  , (is ')',         JSGFRParens)
+  , (is '.',         JSGFDot)
+  , (is ';',         JSGFSemi)
+  , (text,           JSGFText)
   ]
 
 export

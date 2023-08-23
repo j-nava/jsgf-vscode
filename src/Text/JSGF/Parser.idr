@@ -118,13 +118,19 @@ matchsp tok = do
   v <- match tok
   pure (v, sp)
 
+matchText : Grammar state JSGFToken True (String, Maybe (TokType JSGFSpace))
+matchText = do
+  sp <- optional (match JSGFSpace)
+  text <- forget <$> some (choice [match JSGFText, match JSGFDot])
+  pure ((foldl ((++)) "" text), sp)
+
 selfIdent : Grammar state JSGFToken True SelfIdent
 selfIdent = do
-  dash <- matchsp JSGFDash
-  version <- matchsp JSGFText
-  encoding <- optional (matchsp JSGFText)
-  locale <- optional (matchsp JSGFText)
-  end <- matchsp JSGFSemi
+  signature <- matchsp JSGFSignature
+  version   <- matchText
+  encoding  <- optional (matchsp JSGFText)
+  locale    <- optional (matchsp JSGFText)
+  end       <- matchsp JSGFSemi
   pure (MkSelfIdent version encoding locale)
 
 -- block : Grammar state JSGFToken True Block
@@ -143,7 +149,6 @@ jsgfParse : List (WithBounds JSGFToken) -> Either (List1 (ParsingError JSGFToken
 jsgfParse tokList = 
   case parse doc tokList of
     Right (r, Nil) => Right r
-    -- Right (r, l)   => Right ((Paragraph (Textual (joinBy "" ((\e => show e.val.kind) <$> l)) ::: [])) ::: forget r)
-    Right (r, l)   => Right r
-    -- Right _        => Left $ (Error "Document not fully parsed" Nothing) ::: Nil
+    -- Right (r, l)   => Right r
+    Right (_, (MkBounded _ _ bounds)::_)   => Left $ (Error "Document not fully parsed" (Just bounds)) ::: Nil
     Left err       => Left err

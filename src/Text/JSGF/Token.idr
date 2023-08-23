@@ -10,7 +10,7 @@ import Derive.Show
 
 public export
 data JSGFTokenKind
-  = JSGFDash
+  = JSGFSignature
   | JSGFSpace
   | JSGFDot
   | JSGFSemi
@@ -28,9 +28,9 @@ data JSGFTokenKind
 
 public export
 TokenKind JSGFTokenKind where
-  TokType JSGFDash = ()
+  TokType JSGFSignature = ()
   TokType JSGFSpace = String
-  TokType JSGFDot = ()
+  TokType JSGFDot = String
   TokType JSGFSemi = ()
   TokType JSGFLBracket = ()
   TokType JSGFRBracket = ()
@@ -42,9 +42,9 @@ TokenKind JSGFTokenKind where
   TokType JSGFRParens = ()
   TokType JSGFText = String
 
-  tokValue JSGFDash _ = ()
+  tokValue JSGFSignature _ = ()
   tokValue JSGFSpace s = s
-  tokValue JSGFDot _ = ()
+  tokValue JSGFDot _ = "."
   tokValue JSGFSemi _ = ()
   tokValue JSGFLBracket _ = ()
   tokValue JSGFRBracket _ = ()
