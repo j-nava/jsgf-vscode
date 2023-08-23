@@ -2,42 +2,46 @@ module Text.JSGF.Types
 
 import public Data.List1
 import public Data.Fin
+import Text.JSGF.Token
 
 public export
 PType : Type -> Type
 PType a = (a, Maybe String)
 
 public export
+record WithBrackets (a : Type) where
+  constructor MkWithBrackets
+  openBracket  : PType JSGFBracketType
+  value        : a
+  closeBracket : PType JSGFBracketType
+
+public export
 record SelfIdent where
   constructor MkSelfIdent
   signature : PType ()
-  version : PType String
+  version      : PType String
   charEncoding : Maybe (PType String)
-  locale : Maybe (PType String)
-  semi : PType ()
+  locale       : Maybe (PType String)
+  semi         : PType ()
 
 public export
 record GrammarName where
   constructor MkGrammarName
   grammarKeyword : PType String
-  packageName : PType String
-  semi : PType ()
+  packageName    : PType String
+  semi           : PType ()
 
 public export
 record Import where
   constructor MkImport
   importKeyword : PType String
-  openBracket : PType ()
-  packageName : PType String
-  closeBracket : PType ()
-  semi : PType ()
+  packageName   : WithBrackets (PType String)
+  semi          : PType ()
 
 public export
 record RuleName where
   constructor MkRuleName
-  openBracket  : PType ()
-  ruleName     : PType String
-  closeBracket : PType ()
+  ruleName     : WithBrackets (PType String)
 
 public export
 record Weight where
@@ -52,14 +56,19 @@ record RuleDef where
   equals      : PType ()
 
 public export
-record RuleExpansion where
-  constructor MkRuleExpansion
-  a : Int
+data RuleExpansion : Type where
+  Token    : PType String -> RuleExpansion
+  Operator : PType String -> RuleExpansion
+  RuleRef  : (weight : Maybe Weight) -> (ruleName : WithBrackets (PType String)) -> RuleExpansion
+  Group    : WithBrackets RuleExpansion -> RuleExpansion
+  Sequence : List1 RuleExpansion -> RuleExpansion
 
 public export
 record Rule where
   constructor MkRule
   ruleDef    : RuleDef
+  expansion  : RuleExpansion
+  semi       : PType ()
 
 public export
 record Doc where

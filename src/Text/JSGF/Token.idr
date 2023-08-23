@@ -9,19 +9,23 @@ import Derive.Show
 %language ElabReflection
 
 public export
+data JSGFBracketType
+  = JSGFInvalidBracket
+  | JSGFParens
+  | JSGFSquareBracket
+  | JSGFAngBracket
+  | JSGFCurlyBracket
+
+%runElab derive "JSGFBracketType" [Eq,Show]
+
+public export
 data JSGFTokenKind
   = JSGFSignature
   | JSGFSpace
   | JSGFDot
   | JSGFSemi
-  | JSGFLBracket
-  | JSGFRBracket
-  | JSGFLAngBracket
-  | JSGFRAngBracket
-  | JSGFLCurlyBracket
-  | JSGFRCurlyBracket
-  | JSGFLParens
-  | JSGFRParens
+  | JSGFOpen
+  | JSGFClose
   | JSGFEquals
   | JSGFPipe
   | JSGFStar
@@ -36,14 +40,8 @@ TokenKind JSGFTokenKind where
   TokType JSGFSpace = String
   TokType JSGFDot = String
   TokType JSGFSemi = ()
-  TokType JSGFLBracket = ()
-  TokType JSGFRBracket = ()
-  TokType JSGFLAngBracket = ()
-  TokType JSGFRAngBracket = ()
-  TokType JSGFLCurlyBracket = ()
-  TokType JSGFRCurlyBracket = ()
-  TokType JSGFLParens = ()
-  TokType JSGFRParens = ()
+  TokType JSGFOpen = JSGFBracketType
+  TokType JSGFClose = JSGFBracketType
   TokType JSGFEquals = ()
   TokType JSGFPipe = ()
   TokType JSGFStar = String
@@ -54,14 +52,16 @@ TokenKind JSGFTokenKind where
   tokValue JSGFSpace s = s
   tokValue JSGFDot _ = "."
   tokValue JSGFSemi _ = ()
-  tokValue JSGFLBracket _ = ()
-  tokValue JSGFRBracket _ = ()
-  tokValue JSGFLAngBracket _ = () 
-  tokValue JSGFRAngBracket _ = ()
-  tokValue JSGFLCurlyBracket _ = ()
-  tokValue JSGFRCurlyBracket _ = ()
-  tokValue JSGFLParens _ = ()
-  tokValue JSGFRParens _ = ()
+  tokValue JSGFOpen "(" = JSGFParens
+  tokValue JSGFOpen "[" = JSGFSquareBracket
+  tokValue JSGFOpen "{" = JSGFCurlyBracket
+  tokValue JSGFOpen "<" = JSGFAngBracket
+  tokValue JSGFOpen _ = JSGFInvalidBracket
+  tokValue JSGFClose ")" = JSGFParens
+  tokValue JSGFClose "]" = JSGFSquareBracket
+  tokValue JSGFClose "}" = JSGFCurlyBracket
+  tokValue JSGFClose ">" = JSGFAngBracket
+  tokValue JSGFClose _ = JSGFInvalidBracket
   tokValue JSGFEquals _ = ()
   tokValue JSGFPipe _ = ()
   tokValue JSGFStar s = s
