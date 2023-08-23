@@ -23,9 +23,10 @@ import Text.JSGF.Types
 --     IList marker blocks => line marker <++> hcat (pretty <$> forget blocks)
 --     Indentation count inline => hcat (pretty <$> forget inline)
 
-Pretty Block where
-  prettyPrec _ = \case
-    BSelfIdent selfIdent => line ""
+-- Pretty Block where
+--   prettyPrec _ = \case
+--     BSelfIdent selfIdent => line ""
 
-Pretty Doc where
-  prettyPrec _ jsgf = vsep (pretty <$> forget jsgf)
+-- Pretty Doc where
+--   -- prettyPrec _ (MkDoc si) = vsep (pretty <$> forget jsgf)
+--   prettyPrec _ (MkDoc si) = pretty si

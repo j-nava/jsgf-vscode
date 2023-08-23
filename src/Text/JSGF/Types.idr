@@ -35,14 +35,45 @@ PType a = (a, Maybe String)
 public export
 record SelfIdent where
   constructor MkSelfIdent
+  signature : PType ()
   version : PType String
   charEncoding : Maybe (PType String)
   locale : Maybe (PType String)
+  semi : PType ()
 
 public export
-data Block : Type where
-  BSelfIdent : SelfIdent -> Block
+record GrammarName where
+  constructor MkGrammarName
+  grammarKeyword : PType String
+  packageName : PType String
+  semi : PType ()
 
 public export
-Doc : Type
-Doc = List1 Block
+record Import where
+  constructor MkImport
+  importKeyword : PType String
+  openBracket : PType ()
+  packageName : PType String
+  closeBracket : PType ()
+  semi : PType ()
+
+public export
+record RuleName where
+  constructor MkRuleName
+  openBracket  : PType ()
+  ruleName     : PType String
+  closeBracket : PType ()
+
+public export
+record Weight where
+  constructor MkWeight
+  openW   : PType ()
+  value   : PType String
+  closeW  : PType ()
+
+public export
+record Doc where
+  constructor MkDoc
+  selfIdent     : SelfIdent
+  grammarName   : GrammarName
+  imports       : List Import

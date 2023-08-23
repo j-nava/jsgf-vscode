@@ -124,15 +124,51 @@ matchText = do
   text <- forget <$> some (choice [match JSGFText, match JSGFDot])
   pure ((foldl ((++)) "" text), sp)
 
+matchKeyword : String -> Grammar state JSGFToken True (String, Maybe (TokType JSGFSpace))
+matchKeyword keyword = do
+  sp <- optional (match JSGFSpace)
+  k <- match JSGFText
+  when (k /= keyword) $ fail "Expected '\{keyword}', found '\{k}'"
+  pure (k, sp)
+
 selfIdent : Grammar state JSGFToken True SelfIdent
 selfIdent = do
   signature <- matchsp JSGFSignature
   version   <- matchText
   encoding  <- optional (matchsp JSGFText)
   locale    <- optional (matchsp JSGFText)
-  end       <- matchsp JSGFSemi
-  pure (MkSelfIdent version encoding locale)
+  semi      <- matchsp JSGFSemi
+  pure (MkSelfIdent signature version encoding locale semi)
 
+grammarName : Grammar state JSGFToken True GrammarName
+grammarName = do
+  keyword     <- matchKeyword "grammar"
+  packageName <- matchText
+  semi        <- matchsp JSGFSemi
+  pure (MkGrammarName keyword packageName semi)
+
+import_ : Grammar state JSGFToken True Import
+import_ = do
+  keyword      <- matchKeyword "import"
+  openBracket  <- matchsp JSGFLAngBracket
+  packageName  <- matchText
+  closeBracket <- matchsp JSGFRAngBracket
+  semi         <- matchsp JSGFSemi
+  pure (MkImport keyword openBracket packageName closeBracket semi)
+
+ruleName : Grammar state JSGFToken True RuleName
+ruleName = do
+  openBracket  <- matchsp JSGFLAngBracket
+  ruleName     <- matchText
+  closeBracket <- matchsp JSGFRAngBracket
+  pure (MkRuleName openBracket ruleName closeBracket)
+
+weight : Grammar state JSGFToken True Weight
+weight = do
+  openW  <- matchKeyword "/"
+  value  <- matchText
+  closeW <- matchsp JSGFRAngBracket
+  pure (MkWeight openW value closeW)
 -- block : Grammar state JSGFToken True Block
 -- block = do
 --   gg <- match JSGFSpace
@@ -140,15 +176,16 @@ selfIdent = do
 
 doc : Grammar state JSGFToken True Doc
 doc = do 
-  si <- selfIdent
-  pure (BSelfIdent si ::: Nil)
-  -- pure !(some block)
+  pure $ MkDoc 
+    { selfIdent   = !selfIdent
+    , grammarName = !grammarName
+    , imports     = !(many import_)
+    }
 
 export
 jsgfParse : List (WithBounds JSGFToken) -> Either (List1 (ParsingError JSGFToken)) Doc
 jsgfParse tokList = 
   case parse doc tokList of
     Right (r, Nil) => Right r
-    -- Right (r, l)   => Right r
-    Right (_, (MkBounded _ _ bounds)::_)   => Left $ (Error "Document not fully parsed" (Just bounds)) ::: Nil
-    Left err       => Left err
+    Right (_, (MkBounded _ _ bounds)::_) => Left $ (Error "Document not fully parsed" (Just bounds)) ::: Nil
+    Left err => Left err
