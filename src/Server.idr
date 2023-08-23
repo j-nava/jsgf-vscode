@@ -2,11 +2,8 @@ module Server
 
 import Text.JSGF
 
-State : Type
-State = AnyPtr
-
-TextDocument : Type
-TextDocument = AnyPtr
+import Server.Common
+import Server.Diagnostics
 
 %foreign "javascript:lambda:() => require('./server-ffi').load()"
 export prim__load : PrimIO State
@@ -18,24 +15,25 @@ export prim__onChangeConfig : State -> (State -> TextDocument -> IO ()) -> PrimI
 export prim__onChange : State -> (State -> TextDocument -> IO ()) -> PrimIO ()
 %foreign "javascript:lambda:(document) => require('./server-ffi').getText(document)"
 export prim__getText : TextDocument -> PrimIO String
-%foreign "javascript:lambda:(isError, state, document, message, startLine, startCol, endLine, endCol) => require('./server-ffi').sendDiagnostics(isError, state, document, message, startLine, startCol, endLine, endCol)"
-export prim__sendDiagnostics : State -> Bool -> TextDocument -> (message : String) -> (startLine : Int) -> (startCol : Int) -> (endLine : Int) -> (endCol: Int) -> PrimIO ()
-%foreign "javascript:lambda:(state, message) => require('./server-ffi').showInformationMessage(state, message)"
-export prim__showInformationMessage : State -> String -> PrimIO ()
 
 validate : State -> TextDocument -> IO ()
 validate state doc = do
   text <- primIO (prim__getText doc)
+  ds <- primIO prim__mkDiagnostics
   case jsgfParseDoc text of
-    Left errors => traverse_ processError errors
+    Left errors => do
+      traverse_ (processError ds) errors
     Right doc => pure ()
+  primIO (prim__sendDiagnostics state doc ds)
 
   where
-    processError : ParsingError (Token JSGFTokenKind) -> IO ()
-    processError e@(Error message (Just bounds)) =
-      primIO (prim__sendDiagnostics state True doc (show e) bounds.startLine bounds.startCol bounds.endLine bounds.endCol)
-    processError e@(Error message Nothing) = 
-      primIO (prim__sendDiagnostics state True doc (show e) 0 0 0 0)
+    processError : Diagnostics -> ParsingError (Token JSGFTokenKind) -> IO ()
+    processError ds e@(Error message (Just bounds)) = do
+      d <- primIO (prim__mkDiagnostic True (show e) "Parser" bounds.startLine bounds.startCol bounds.endLine bounds.endCol)
+      primIO (prim__pushDiagnostic ds d)
+    processError ds e@(Error message Nothing) = do
+      d <- primIO (prim__mkDiagnostic True (show e) "Parser" 0 0 0 0)
+      primIO (prim__pushDiagnostic ds d)
 
 main : IO ()
 main = do

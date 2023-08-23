@@ -22,6 +22,8 @@ depends
 -- modules to install
 modules
   = Server 
+  , Server.Common
+  , Server.Diagnostics
   , Text.JSGF.Types
   , Text.JSGF.Token
   , Text.JSGF.Lexer

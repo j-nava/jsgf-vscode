@@ -242,8 +242,7 @@ export function getText(textDocument: TextDocument): string {
   return textDocument.getText();
 }
 
-export function sendDiagnostics(state: State, isError: boolean, textDocument: TextDocument, message: string, startLine: number, startCol: number, endLine: number, endCol: number) {
-  const diagnostics: Diagnostic[] = [];
+export function mkDiagnostic(isError: boolean, message: string, source: string, startLine: number, startCol: number, endLine: number, endCol: number) {
   const diagnostic: Diagnostic = {
   	severity: isError ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning,
     range: {
@@ -251,9 +250,21 @@ export function sendDiagnostics(state: State, isError: boolean, textDocument: Te
       end: { line: endLine, character: endCol}
     },
   	message: message,
-  	source: "ex"
+  	source: source
   };
-  diagnostics.push(diagnostic);
+  return diagnostic;
+}
+
+export function mkDiagnostics(): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+  return diagnostics;
+}
+
+export function pushDiagnostic(ds: Diagnostic[], d: Diagnostic)  {
+  ds.push(d);
+}
+
+export function sendDiagnostics(state: State, textDocument: TextDocument, diagnostics: Diagnostic[]) {
   state.connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
