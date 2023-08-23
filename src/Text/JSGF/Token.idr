@@ -22,6 +22,10 @@ data JSGFTokenKind
   | JSGFRCurlyBracket
   | JSGFLParens
   | JSGFRParens
+  | JSGFEquals
+  | JSGFPipe
+  | JSGFStar
+  | JSGFPlus
   | JSGFText
 
 %runElab derive "JSGFTokenKind" [Eq,Show]
@@ -40,6 +44,10 @@ TokenKind JSGFTokenKind where
   TokType JSGFRCurlyBracket = ()
   TokType JSGFLParens = ()
   TokType JSGFRParens = ()
+  TokType JSGFEquals = ()
+  TokType JSGFPipe = ()
+  TokType JSGFStar = String
+  TokType JSGFPlus = ()
   TokType JSGFText = String
 
   tokValue JSGFSignature _ = ()
@@ -54,6 +62,10 @@ TokenKind JSGFTokenKind where
   tokValue JSGFRCurlyBracket _ = ()
   tokValue JSGFLParens _ = ()
   tokValue JSGFRParens _ = ()
+  tokValue JSGFEquals _ = ()
+  tokValue JSGFPipe _ = ()
+  tokValue JSGFStar s = s
+  tokValue JSGFPlus _ = ()
   tokValue JSGFText s = s
 
 public export

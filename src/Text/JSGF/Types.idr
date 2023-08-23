@@ -4,31 +4,6 @@ import public Data.List1
 import public Data.Fin
 
 public export
-Marker : Type 
-Marker = String
-
-public export
-data MDInline
-  = Textual String
-  | Strong String
-  | Emphasis String
-  | Code String
-  | Link String String
-
-public export
-data MDBlockItem = AnyBlockItem | ListItemBlockItem
-
-public export
-data MDBlock : {0 blockItem : MDBlockItem} -> Type where
-  ThematicBreak : MDBlock { blockItem = AnyBlockItem }
-  Paragraph     : List1 MDInline -> MDBlock { blockItem = AnyBlockItem }
-  Heading       : (Fin 6) -> List1 MDInline -> MDBlock { blockItem = AnyBlockItem }
-  BlankLine     : Nat -> MDBlock { blockItem = AnyBlockItem }
-  IListItem     : List1 (MDBlock { blockItem = AnyBlockItem }) -> MDBlock { blockItem = ListItemBlockItem }
-  IList         : Marker -> List1 (MDBlock { blockItem = ListItemBlockItem }) -> MDBlock { blockItem = AnyBlockItem }
-  Indentation   : Nat -> List1 MDInline -> MDBlock { blockItem = AnyBlockItem }
-
-public export
 PType : Type -> Type
 PType a = (a, Maybe String)
 
@@ -67,9 +42,24 @@ record RuleName where
 public export
 record Weight where
   constructor MkWeight
-  openW   : PType ()
   value   : PType String
-  closeW  : PType ()
+
+public export
+record RuleDef where
+  constructor MkRuleDef
+  modifier    : Maybe (PType String)
+  ruleName    : RuleName
+  equals      : PType ()
+
+public export
+record RuleExpansion where
+  constructor MkRuleExpansion
+  a : Int
+
+public export
+record Rule where
+  constructor MkRule
+  ruleDef    : RuleDef
 
 public export
 record Doc where
@@ -77,3 +67,4 @@ record Doc where
   selfIdent     : SelfIdent
   grammarName   : GrammarName
   imports       : List Import
+  rules         : List Rule

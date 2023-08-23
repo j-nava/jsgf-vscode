@@ -20,6 +20,10 @@ tokenMap = toTokenMap
   , (is ')',         JSGFRParens)
   , (is '.',         JSGFDot)
   , (is ';',         JSGFSemi)
+  , (is '=',         JSGFEquals)
+  , (is '|',         JSGFPipe)
+  , (is '*',         JSGFStar)
+  , (is '+',         JSGFPlus)
   , (text,           JSGFText)
   ]
 
