@@ -1,9 +1,9 @@
-module Text.JSGF.Printer
+module Text.JSGF.Parser.Printer
 
 import Data.String
 import Text.PrettyPrint.Bernardy
 
-import Text.JSGF.Types
+import Text.JSGF.Tree.Concrete
 
 -- Pretty MDInline where
 --   prettyPrec _ = \case

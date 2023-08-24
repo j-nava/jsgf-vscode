@@ -24,11 +24,13 @@ modules
   = Server 
   , Server.Common
   , Server.Diagnostics
-  , Text.JSGF.Types
-  , Text.JSGF.Token
-  , Text.JSGF.Lexer
+  , Text.JSGF.Parser.Token
+  , Text.JSGF.Parser.Lexer
+  , Text.JSGF.Parser.Parser
+  , Text.JSGF.Parser.Printer
   , Text.JSGF.Parser
-  , Text.JSGF.Printer
+  , Text.JSGF.Tree.Abstract
+  , Text.JSGF.Tree.Concrete
   , Text.JSGF
 
 -- main file (i.e. file to load at REPL)

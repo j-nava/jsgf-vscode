@@ -1,9 +1,9 @@
-module Text.JSGF.Types
+module Text.JSGF.Tree.Concrete
 
 import Text.Bounded
 import public Data.List1
 import public Data.Fin
-import Text.JSGF.Token
+import Text.JSGF.Parser.Token
 
 public export
 record Ann where

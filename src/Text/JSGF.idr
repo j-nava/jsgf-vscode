@@ -1,17 +1,14 @@
 module Text.JSGF
 
+import public Text.JSGF.Tree.Concrete
+import public Text.JSGF.Tree.Abstract
+import public Text.JSGF.Parser
 import public Text.Parser
-
-import Data.String
-import public Text.JSGF.Token
-import public Text.JSGF.Types
-import Text.JSGF.Lexer
-import Text.JSGF.Parser
-
-public export
-ParseResult : Type
-ParseResult = Either (List1 (ParsingError JSGFToken)) Doc
+import public Text.JSGF.Parser.Token
 
 export
-jsgfParseDoc : String -> ParseResult
-jsgfParseDoc = jsgfParse . jsgfLex
+jsgfDocToTree : Doc -> Tree
+
+export
+jsgfParse : String -> ParseResult
+jsgfParse = parseDoc

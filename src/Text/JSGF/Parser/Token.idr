@@ -1,4 +1,4 @@
-module Text.JSGF.Token
+module Text.JSGF.Parser.Token
 
 import Data.String
 import Text.Lexer

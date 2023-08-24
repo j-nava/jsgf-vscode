@@ -20,7 +20,7 @@ validate : State -> TextDocument -> IO ()
 validate state doc = do
   text <- primIO (prim__getText doc)
   ds <- primIO prim__mkDiagnostics
-  case jsgfParseDoc text of
+  case jsgfParse text of
     Left errors => do
       traverse_ (processError ds) errors
     Right doc => pure ()
