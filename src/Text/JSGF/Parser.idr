@@ -22,10 +22,10 @@ matchsp tok = do
   v <- match tok
   pure (v, sp)
 
-between' : JSGFBracketType -> Grammar state JSGFToken True a -> Grammar state JSGFToken True (WithBrackets a)
+between' : List JSGFBracketType -> Grammar state JSGFToken True a -> Grammar state JSGFToken True (WithBrackets a)
 between' bracketType parser = do
   openB  <- matchsp JSGFOpen
-  when ((fst openB) /= bracketType) $ fail "Unexpected bracket type"
+  when (isNothing $ find (== fst openB) bracketType) $ fail "Unexpected bracket type"
   value  <- parser
   closeB <- matchsp JSGFClose
   when ((fst closeB) /= (fst openB)) $ fail "Unexpected bracket type"
@@ -66,13 +66,13 @@ grammarName = do
 import_ : Grammar state JSGFToken True Import
 import_ = do
   keyword      <- matchKeyword "import"
-  packageName  <- between' JSGFAngBracket matchTextDotStar
+  packageName  <- between' [JSGFAngBracket] matchTextDotStar
   semi         <- matchsp JSGFSemi
   pure (MkImport keyword packageName semi)
 
 ruleName : Grammar state JSGFToken True RuleName
 ruleName = do
-  ruleName     <- between' JSGFAngBracket matchText
+  ruleName     <- between' [JSGFAngBracket] matchText
   pure (MkRuleName ruleName)
 
 weight : Grammar state JSGFToken True Weight
@@ -98,18 +98,29 @@ ruleDef = do
 
 mutual
   ruleExpansion : Grammar state JSGFToken True RuleExpansion
-  ruleExpansion = ruleExpansionRuleRef <|> ruleExpansionGroup
+  ruleExpansion = do
+    res   <- some (choice [ruleExpansionGroup, ruleExpansionRuleRef, ruleExpansionToken])
+    semi  <- matchsp JSGFSemi
+    pure $ case res of
+      (x:::Nil) => x
+      xs => Sequence xs
 
   ruleExpansionGroup : Grammar state JSGFToken True RuleExpansion
   ruleExpansionGroup = do
-    ruleName     <- between' JSGFParens ruleExpansion
+    ruleName     <- between' [JSGFParens, JSGFSquareBracket] ruleExpansion
     pure (Group ruleName)
 
   ruleExpansionRuleRef : Grammar state JSGFToken True RuleExpansion
   ruleExpansionRuleRef = do
     weight       <- optional weight
-    ruleName     <- between' JSGFAngBracket matchText
+    ruleName     <- between' [JSGFAngBracket] matchText
     pure (RuleRef weight ruleName)
+
+  ruleExpansionToken : Grammar state JSGFToken True RuleExpansion
+  ruleExpansionToken = do
+    weight    <- optional weight
+    token     <- matchText
+    pure (Token weight token)
 
 rule : Grammar state JSGFToken True Rule
 rule = do

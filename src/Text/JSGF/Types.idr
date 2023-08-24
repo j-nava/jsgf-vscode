@@ -57,9 +57,9 @@ record RuleDef where
 
 public export
 data RuleExpansion : Type where
-  Token    : PType String -> RuleExpansion
+  Token    : Maybe Weight -> PType String -> RuleExpansion
   Operator : PType String -> RuleExpansion
-  RuleRef  : (weight : Maybe Weight) -> (ruleName : WithBrackets (PType String)) -> RuleExpansion
+  RuleRef  : Maybe Weight -> (ruleName : WithBrackets (PType String)) -> RuleExpansion
   Group    : WithBrackets RuleExpansion -> RuleExpansion
   Sequence : List1 RuleExpansion -> RuleExpansion
 
