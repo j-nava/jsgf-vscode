@@ -43,8 +43,6 @@ export function load(): State {
   connection.onInitialize((params: InitializeParams) => {
     const capabilities = params.capabilities;
 
-    // Does the client support the `workspace/configuration` request?
-    // If not, we fall back using global settings.
     hasConfigurationCapability = !!(
       capabilities.workspace && !!capabilities.workspace.configuration
     );

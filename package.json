@@ -1,23 +1,23 @@
 {
-	"name": "jsgf-support",
+  "name": "jsgf-support",
   "displayName": "JSGF Support",
-	"description": "JSGF (JSpeech Grammar Format) support",
-	"author": "Jesse Nava",
+  "description": "JSGF (JSpeech Grammar Format) support",
+  "author": "Jesse Nava",
   "publisher": "j-nava",
-	"license": "MIT",
-	"version": "0.1.0",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/j-nava/jsgf-vscode"
-	},
-	"categories": [],
-	"keywords": [
-		"jsgf jspeech"
-	],
+  "license": "MIT",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/j-nava/jsgf-vscode"
+  },
+  "categories": [],
+  "keywords": [
+    "jsgf jspeech"
+  ],
   "activationEvents": [
   ],
-	"main": "./build/exec/extension.js",
-	"contributes": {
+  "main": "./build/exec/extension.js",
+  "contributes": {
     "languages": [
       { "id": "jsgf",
         "aliases": ["jspeech"],
@@ -25,49 +25,49 @@
         "configuration": "./language-configuration.json"
       }
     ],
-		"configuration": {
-			"type": "object",
-			"title": "Example configuration",
-			"properties": {
-				"jsgf.maxNumberOfProblems": {
-					"scope": "resource",
-					"type": "number",
-					"default": 100,
-					"description": "Controls the maximum number of problems produced by the server."
-				},
-				"jsgf.trace.server": {
-					"scope": "window",
-					"type": "string",
-					"enum": [
-						"off",
-						"messages",
-						"verbose"
-					],
-					"default": "off",
-					"description": "Traces the communication between VS Code and the language server."
-				}
-			}
-		}
-	},
-	"scripts": {
+    "configuration": {
+      "type": "object",
+      "title": "Example configuration",
+      "properties": {
+        "jsgf.maxNumberOfProblems": {
+          "scope": "resource",
+          "type": "number",
+          "default": 100,
+          "description": "Controls the maximum number of problems produced by the server."
+        },
+        "jsgf.trace.server": {
+          "scope": "window",
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the language server."
+        }
+      }
+    }
+  },
+  "scripts": {
     "vscode:prepublish": "npm install && npm run compile",
     "compile": "npx tsc -b",
     "watch": "npx tsc -b -w",
-    "bundle": "npx esbuild ./build/exec/extension.js --bundle --minify --allow-overwrite --outfile=build/exec/extension.js --external:vscode --format=cjs --platform=node"
+    "bundle": "npx esbuild ./build/exec/extension.js ./build/exec/server-ffi.js ./build/exec/server.js --bundle --minify --allow-overwrite --outdir=build/exec/ --external:vscode --format=cjs --platform=node"
   },
-	"engines": {
-		"vscode": "^1.75.0"
-	},
-	"dependencies": {
-		"vscode-languageclient": "^8.1.0",
-		"vscode-languageserver": "^8.1.0",
-		"vscode-languageserver-textdocument": "^1.0.8"
-	},
-	"devDependencies": {
-		"@types/vscode": "^1.81.0",
-		"@types/node": "^20.5.0",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0",
+    "vscode-languageserver": "^8.1.0",
+    "vscode-languageserver-textdocument": "^1.0.8"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@types/node": "^20.5.0",
     "@vscode/vsce": "^2.20.1",
-		"typescript": "^5.1.6",
+    "typescript": "^5.1.6",
     "esbuild": "^0.19.1"
-	}
+  }
 }
