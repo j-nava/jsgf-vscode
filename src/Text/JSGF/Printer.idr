@@ -1,4 +1,4 @@
-module Text.JSGF.Print
+module Text.JSGF.Printer
 
 import Data.String
 import Text.PrettyPrint.Bernardy

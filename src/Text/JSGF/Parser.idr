@@ -8,7 +8,7 @@ import Text.JSGF.Types
 matchtok : TokenKind JSGFTokenKind => Eq JSGFTokenKind => (kind : JSGFTokenKind) -> Grammar state (Token JSGFTokenKind) True (TokType kind, Ann)
 matchtok tok = do
   v <- match tok
-  pure (v, MkAnn "")
+  pure (v, MkAnn "" !position)
 
 matchsp : Grammar state (Token JSGFTokenKind) False String
 matchsp = do
@@ -19,13 +19,13 @@ withSpace' : Lazy (Grammar state (Token JSGFTokenKind) True String) -> Grammar s
 withSpace' parser = do
   sp <- matchsp
   text <- some parser 
-  pure ((foldl ((++)) "" text), MkAnn sp)
+  pure ((foldl ((++)) "" text), MkAnn sp !position)
 
 withSpace : TokenKind JSGFTokenKind => Eq JSGFTokenKind => (kind : JSGFTokenKind) -> Grammar state (Token JSGFTokenKind) True (TokType kind, Ann)
 withSpace tok = do
   sp <- matchsp
   v <- match tok
-  pure (v, MkAnn sp)
+  pure (v, MkAnn sp !position)
 
 between' : List JSGFBracketType -> Lazy (Grammar state JSGFToken True a) -> Grammar state JSGFToken True (WithBrackets a)
 between' bracketType parser = do
@@ -56,7 +56,7 @@ matchKeyword keyword = do
   sp <- matchsp
   k <- match JSGFText
   when (k /= keyword) $ fail "Expected '\{keyword}', found '\{k}'"
-  pure (k, MkAnn sp)
+  pure (k, MkAnn sp !position)
 
 selfIdent : Grammar state JSGFToken True SelfIdent
 selfIdent = do
@@ -157,7 +157,7 @@ doc = do
     , grammarName = !grammarName
     , imports     = !(many import_)
     , rules       = !(many rule)
-    , finalSpace  = !(matchsp)
+    , finalSpace  = !matchsp
     }
 
 export

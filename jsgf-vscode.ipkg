@@ -28,7 +28,7 @@ modules
   , Text.JSGF.Token
   , Text.JSGF.Lexer
   , Text.JSGF.Parser
-  , Text.JSGF.Print
+  , Text.JSGF.Printer
   , Text.JSGF
 
 -- main file (i.e. file to load at REPL)

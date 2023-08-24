@@ -9,7 +9,7 @@ public export
 record Ann where
   constructor MkAnn
   spaces    : String
-  -- position  : Bounds
+  position  : Bounds
 
 public export
 PType : Type -> Type
