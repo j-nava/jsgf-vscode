@@ -77,3 +77,4 @@ record Doc where
   grammarName   : GrammarName
   imports       : List Import
   rules         : List Rule
+  finalSpace    : Maybe String

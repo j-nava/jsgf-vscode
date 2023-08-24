@@ -40,6 +40,9 @@ matchTextDot = matchsp' (choice [match JSGFText, match JSGFDot])
 matchTextDotStar : Grammar state JSGFToken True (String, Maybe (TokType JSGFSpace))
 matchTextDotStar = matchsp' (choice [match JSGFText, match JSGFDot, match JSGFStar])
 
+matchTextOperator : Grammar state JSGFToken True (String, Maybe (TokType JSGFSpace))
+matchTextOperator = matchsp' (choice [match JSGFStar, match JSGFPlus, match JSGFPipe])
+
 matchKeyword : String -> Grammar state JSGFToken True (String, Maybe (TokType JSGFSpace))
 matchKeyword keyword = do
   sp <- optional (match JSGFSpace)
@@ -99,16 +102,21 @@ ruleDef = do
 mutual
   ruleExpansion : Grammar state JSGFToken True RuleExpansion
   ruleExpansion = do
-    res   <- some (choice [ruleExpansionGroup, ruleExpansionRuleRef, ruleExpansionToken])
-    semi  <- matchsp JSGFSemi
+    res   <- some (choice [ruleExpansionGroup, ruleExpansionOperator, ruleExpansionRuleRef, ruleExpansionToken])
     pure $ case res of
       (x:::Nil) => x
       xs => Sequence xs
 
   ruleExpansionGroup : Grammar state JSGFToken True RuleExpansion
   ruleExpansionGroup = do
-    ruleName     <- between' [JSGFParens, JSGFSquareBracket] ruleExpansion
+    -- ruleName     <- between' [JSGFParens, JSGFSquareBracket] ruleExpansion
+    ruleName     <- between' [JSGFParens, JSGFSquareBracket] ruleExpansionToken
     pure (Group ruleName)
+
+  ruleExpansionOperator : Grammar state JSGFToken True RuleExpansion
+  ruleExpansionOperator = do
+    operator     <- matchTextOperator
+    pure (Operator operator)
 
   ruleExpansionRuleRef : Grammar state JSGFToken True RuleExpansion
   ruleExpansionRuleRef = do
@@ -136,6 +144,7 @@ doc = do
     , grammarName = !grammarName
     , imports     = !(many import_)
     , rules       = !(many rule)
+    , finalSpace  = !(optional (match JSGFSpace))
     }
 
 export

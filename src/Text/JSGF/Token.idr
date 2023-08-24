@@ -43,9 +43,9 @@ TokenKind JSGFTokenKind where
   TokType JSGFOpen = JSGFBracketType
   TokType JSGFClose = JSGFBracketType
   TokType JSGFEquals = ()
-  TokType JSGFPipe = ()
+  TokType JSGFPipe = String
   TokType JSGFStar = String
-  TokType JSGFPlus = ()
+  TokType JSGFPlus = String
   TokType JSGFText = String
 
   tokValue JSGFSignature _ = ()
@@ -63,9 +63,9 @@ TokenKind JSGFTokenKind where
   tokValue JSGFClose ">" = JSGFAngBracket
   tokValue JSGFClose _ = JSGFInvalidBracket
   tokValue JSGFEquals _ = ()
-  tokValue JSGFPipe _ = ()
+  tokValue JSGFPipe s = s
   tokValue JSGFStar s = s
-  tokValue JSGFPlus _ = ()
+  tokValue JSGFPlus s = s
   tokValue JSGFText s = s
 
 public export
