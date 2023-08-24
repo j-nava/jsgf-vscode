@@ -1,12 +1,19 @@
 module Text.JSGF.Types
 
+import Text.Bounded
 import public Data.List1
 import public Data.Fin
 import Text.JSGF.Token
 
 public export
+record Ann where
+  constructor MkAnn
+  spaces    : String
+  -- position  : Bounds
+
+public export
 PType : Type -> Type
-PType a = (a, String)
+PType a = (a, Ann)
 
 public export
 record WithBrackets (a : Type) where
@@ -54,7 +61,7 @@ record RuleDef where
   modifier    : Maybe (PType String)
   ruleName    : RuleName
   tag         : Maybe (WithBrackets (PType String))
-  equals      : PType ()
+  equals      : PType String
 
 public export
 data RuleExpansion : Type where
@@ -79,4 +86,4 @@ record Doc where
   grammarName   : GrammarName
   imports       : List Import
   rules         : List Rule
-  finalSpace    : Maybe String
+  finalSpace    : String

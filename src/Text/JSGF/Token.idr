@@ -50,7 +50,7 @@ TokenKind JSGFTokenKind where
   TokType JSGFSemi = ()
   TokType JSGFOpen = JSGFBracketType
   TokType JSGFClose = JSGFBracketType
-  TokType JSGFEquals = ()
+  TokType JSGFEquals = String
   TokType JSGFPipe = String
   TokType JSGFStar = String
   TokType JSGFPlus = String
@@ -70,7 +70,7 @@ TokenKind JSGFTokenKind where
   tokValue JSGFClose "}" = JSGFCurlyBracket
   tokValue JSGFClose ">" = JSGFAngBracket
   tokValue JSGFClose _ = JSGFInvalidBracket
-  tokValue JSGFEquals _ = ()
+  tokValue JSGFEquals s = s
   tokValue JSGFPipe s = s
   tokValue JSGFStar s = s
   tokValue JSGFPlus s = s
