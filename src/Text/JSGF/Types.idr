@@ -6,7 +6,7 @@ import Text.JSGF.Token
 
 public export
 PType : Type -> Type
-PType a = (a, Maybe String)
+PType a = (a, String)
 
 public export
 record WithBrackets (a : Type) where
@@ -53,6 +53,7 @@ record RuleDef where
   constructor MkRuleDef
   modifier    : Maybe (PType String)
   ruleName    : RuleName
+  tag         : Maybe (WithBrackets (PType String))
   equals      : PType ()
 
 public export
@@ -61,6 +62,7 @@ data RuleExpansion : Type where
   Operator : PType String -> RuleExpansion
   RuleRef  : Maybe Weight -> (ruleName : WithBrackets (PType String)) -> RuleExpansion
   Group    : WithBrackets RuleExpansion -> RuleExpansion
+  Tag      : WithBrackets (PType String) -> RuleExpansion
   Sequence : List1 RuleExpansion -> RuleExpansion
 
 public export

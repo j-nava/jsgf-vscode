@@ -4,11 +4,19 @@ import Text.Lexer
 import Text.JSGF.Token
 
 text : Lexer
-text = someUntil (oneOf "[]<>{}().#;" <|> spaces) any -- pred (> chr 160) <|> alphaNum
+text = someUntil (oneOf "[]<>{}().#;*" <|> spaces) any -- pred (> chr 160) <|> alphaNum
+
+comment : Lexer
+comment = is '/' <+> is '/' <+> many (isNot '\n')
+
+commentBlock : Lexer
+commentBlock = is '/' <+> is '*' <+> manyThen (is '*' <+> is '/') any
 
 tokenMap : TokenMap JSGFToken
 tokenMap = toTokenMap
   [ (spaces,         JSGFSpace)
+  , (comment,        JSGFSpace)
+  , (commentBlock,   JSGFSpace)
   , (exact "#JSGF",  JSGFSignature)
   , (oneOf "([{<",   JSGFOpen)
   , (oneOf ")]}>",   JSGFClose)

@@ -5,72 +5,80 @@ import Text.Parser
 import Text.JSGF.Token
 import Text.JSGF.Types
 
-matchtok : TokenKind JSGFTokenKind => Eq JSGFTokenKind => (kind : JSGFTokenKind) -> Grammar state (Token JSGFTokenKind) True (TokType kind, Maybe (TokType JSGFSpace))
+matchtok : TokenKind JSGFTokenKind => Eq JSGFTokenKind => (kind : JSGFTokenKind) -> Grammar state (Token JSGFTokenKind) True (TokType kind, String)
 matchtok tok = do
   v <- match tok
-  pure (v, Nothing)
+  pure (v, "")
 
-matchsp' : Grammar state (Token JSGFTokenKind) True String -> Grammar state (Token JSGFTokenKind) True (String, Maybe (TokType JSGFSpace))
-matchsp' parser = do
-  sp <- optional (match JSGFSpace)
+matchsp : Grammar state (Token JSGFTokenKind) False String
+matchsp = do
+  sp <- many (match JSGFSpace)
+  pure (foldl (++) "" sp)
+
+withSpace' : Lazy (Grammar state (Token JSGFTokenKind) True String) -> Grammar state (Token JSGFTokenKind) True (String, String)
+withSpace' parser = do
+  sp <- matchsp
   text <- some parser 
   pure ((foldl ((++)) "" text), sp)
 
-matchsp : TokenKind JSGFTokenKind => Eq JSGFTokenKind => (kind : JSGFTokenKind) -> Grammar state (Token JSGFTokenKind) True (TokType kind, Maybe (TokType JSGFSpace))
-matchsp tok = do
-  sp <- optional (match JSGFSpace)
+withSpace : TokenKind JSGFTokenKind => Eq JSGFTokenKind => (kind : JSGFTokenKind) -> Grammar state (Token JSGFTokenKind) True (TokType kind, String)
+withSpace tok = do
+  sp <- matchsp
   v <- match tok
   pure (v, sp)
 
-between' : List JSGFBracketType -> Grammar state JSGFToken True a -> Grammar state JSGFToken True (WithBrackets a)
+between' : List JSGFBracketType -> Lazy (Grammar state JSGFToken True a) -> Grammar state JSGFToken True (WithBrackets a)
 between' bracketType parser = do
-  openB  <- matchsp JSGFOpen
+  openB  <- withSpace JSGFOpen
   when (isNothing $ find (== fst openB) bracketType) $ fail "Unexpected bracket type"
   value  <- parser
-  closeB <- matchsp JSGFClose
-  when ((fst closeB) /= (fst openB)) $ fail "Unexpected bracket type"
+  closeB <- withSpace JSGFClose
+  when ((fst closeB) /= (fst openB)) $ fatalError "Expected '\{show $ fst openB}', found '\{show $ fst closeB}'"
   pure $ MkWithBrackets { openBracket = openB, value = value, closeBracket = closeB }
 
-matchText : Grammar state JSGFToken True (String, Maybe (TokType JSGFSpace))
-matchText = matchsp' (match JSGFText)
+matchText : Grammar state JSGFToken True (String, String)
+matchText = withSpace' (match JSGFText)
 
-matchTextDot : Grammar state JSGFToken True (String, Maybe (TokType JSGFSpace))
-matchTextDot = matchsp' (choice [match JSGFText, match JSGFDot])
+matchTextDot : Grammar state JSGFToken True (String, String)
+matchTextDot = withSpace' (choice [match JSGFText, match JSGFDot])
 
-matchTextDotStar : Grammar state JSGFToken True (String, Maybe (TokType JSGFSpace))
-matchTextDotStar = matchsp' (choice [match JSGFText, match JSGFDot, match JSGFStar])
+matchTextDotStar : Grammar state JSGFToken True (String, String)
+matchTextDotStar = withSpace' (choice [match JSGFText, match JSGFDot, match JSGFStar])
 
-matchTextOperator : Grammar state JSGFToken True (String, Maybe (TokType JSGFSpace))
-matchTextOperator = matchsp' (choice [match JSGFStar, match JSGFPlus, match JSGFPipe])
+matchTextOperator : Grammar state JSGFToken True (String, String)
+matchTextOperator = withSpace' (choice [match JSGFStar, match JSGFPlus, match JSGFPipe])
 
-matchKeyword : String -> Grammar state JSGFToken True (String, Maybe (TokType JSGFSpace))
+matchTextTag : Grammar state JSGFToken True (String, String)
+matchTextTag = withSpace' (choice [match JSGFText, match JSGFDot, match JSGFStar, match JSGFPlus, match JSGFPipe])
+
+matchKeyword : String -> Grammar state JSGFToken True (String, String)
 matchKeyword keyword = do
-  sp <- optional (match JSGFSpace)
+  sp <- matchsp
   k <- match JSGFText
   when (k /= keyword) $ fail "Expected '\{keyword}', found '\{k}'"
   pure (k, sp)
 
 selfIdent : Grammar state JSGFToken True SelfIdent
 selfIdent = do
-  signature <- matchsp JSGFSignature
+  signature <- withSpace JSGFSignature
   version   <- matchTextDot
-  encoding  <- optional (matchsp JSGFText)
-  locale    <- optional (matchsp JSGFText)
-  semi      <- matchsp JSGFSemi
+  encoding  <- optional (withSpace JSGFText)
+  locale    <- optional (withSpace JSGFText)
+  semi      <- withSpace JSGFSemi
   pure (MkSelfIdent signature version encoding locale semi)
 
 grammarName : Grammar state JSGFToken True GrammarName
 grammarName = do
   keyword     <- matchKeyword "grammar"
   packageName <- matchTextDot
-  semi        <- matchsp JSGFSemi
+  semi        <- withSpace JSGFSemi
   pure (MkGrammarName keyword packageName semi)
 
 import_ : Grammar state JSGFToken True Import
 import_ = do
   keyword      <- matchKeyword "import"
   packageName  <- between' [JSGFAngBracket] matchTextDotStar
-  semi         <- matchsp JSGFSemi
+  semi         <- withSpace JSGFSemi
   pure (MkImport keyword packageName semi)
 
 ruleName : Grammar state JSGFToken True RuleName
@@ -96,22 +104,27 @@ ruleDef : Grammar state JSGFToken True RuleDef
 ruleDef = do
   modifier     <- optional (matchKeyword "public")
   name         <- ruleName
-  equals       <- matchsp JSGFEquals
-  pure (MkRuleDef modifier name equals)
+  tag          <- optional (between' [JSGFCurlyBracket] matchTextTag)
+  equals       <- withSpace JSGFEquals
+  pure (MkRuleDef modifier name tag equals)
 
 mutual
   ruleExpansion : Grammar state JSGFToken True RuleExpansion
   ruleExpansion = do
-    res   <- some (choice [ruleExpansionGroup, ruleExpansionOperator, ruleExpansionRuleRef, ruleExpansionToken])
+    res   <- some (choice [ruleExpansionGroup, ruleExpansionOperator, ruleExpansionRuleRef, ruleExpansionTag, ruleExpansionToken])
     pure $ case res of
       (x:::Nil) => x
       xs => Sequence xs
 
   ruleExpansionGroup : Grammar state JSGFToken True RuleExpansion
   ruleExpansionGroup = do
-    -- ruleName     <- between' [JSGFParens, JSGFSquareBracket] ruleExpansion
-    ruleName     <- between' [JSGFParens, JSGFSquareBracket] ruleExpansionToken
+    ruleName     <- between' [JSGFParens, JSGFSquareBracket] ruleExpansion
     pure (Group ruleName)
+
+  ruleExpansionTag : Grammar state JSGFToken True RuleExpansion
+  ruleExpansionTag = do
+    tag     <- between' [JSGFCurlyBracket] matchTextTag
+    pure (Tag tag)
 
   ruleExpansionOperator : Grammar state JSGFToken True RuleExpansion
   ruleExpansionOperator = do
@@ -134,7 +147,7 @@ rule : Grammar state JSGFToken True Rule
 rule = do
   def       <- ruleDef
   expansion <- ruleExpansion
-  semi      <- matchsp JSGFSemi
+  semi      <- withSpace JSGFSemi
   pure (MkRule def expansion semi)
 
 doc : Grammar state JSGFToken True Doc

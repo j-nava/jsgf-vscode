@@ -16,7 +16,15 @@ data JSGFBracketType
   | JSGFAngBracket
   | JSGFCurlyBracket
 
-%runElab derive "JSGFBracketType" [Eq,Show]
+export
+Show JSGFBracketType where
+  show JSGFInvalidBracket = "invalid"
+  show JSGFParens         = "()"
+  show JSGFSquareBracket  = "[]"
+  show JSGFAngBracket     = "<>"
+  show JSGFCurlyBracket   = "{}"
+
+%runElab derive "JSGFBracketType" [Eq]
 
 public export
 data JSGFTokenKind
