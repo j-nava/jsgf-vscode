@@ -8,9 +8,9 @@ import Text.JSGF.Parser.Parser
 import Text.JSGF.Tree.Concrete
 
 public export
-ParseResult : Type
-ParseResult = Either (List1 (ParsingError JSGFToken)) Doc
+Result : Type -> Type
+Result a = Either (List1 (ParsingError JSGFToken)) a
 
 export
-parseDoc : String -> ParseResult
+parseDoc : String -> Result Doc
 parseDoc = parse . lex

@@ -23,7 +23,7 @@ validate state doc = do
   case jsgfParse text of
     Left errors => do
       traverse_ (processError ds) errors
-    Right doc => pure ()
+    Right jsgf => pure ()
   primIO (prim__sendDiagnostics state doc ds)
 
   where

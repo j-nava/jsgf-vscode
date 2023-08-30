@@ -81,16 +81,11 @@ import_ = do
   semi         <- withSpace JSGFSemi
   pure (MkImport keyword packageName semi)
 
-ruleName : Grammar state JSGFToken True RuleName
-ruleName = do
-  ruleName     <- between' [JSGFAngBracket] matchText
-  pure (MkRuleName ruleName)
-
 weight : Grammar state JSGFToken True Weight
 weight = do
   value <- matchText
   when (check (fst value) == False) $ fail "Invalid weight"
-  pure (MkWeight value)
+  pure value
 
   where
   check : String -> Bool
@@ -103,7 +98,7 @@ weight = do
 ruleDef : Grammar state JSGFToken True RuleDef
 ruleDef = do
   modifier     <- optional (matchKeyword "public")
-  name         <- ruleName
+  name         <- between' [JSGFAngBracket] matchText
   tag          <- optional (between' [JSGFCurlyBracket] matchTextTag)
   equals       <- withSpace JSGFEquals
   pure (MkRuleDef modifier name tag equals)

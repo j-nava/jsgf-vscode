@@ -25,7 +25,7 @@ record WithBrackets (a : Type) where
 public export
 record SelfIdent where
   constructor MkSelfIdent
-  signature : PType ()
+  signature    : PType ()
   version      : PType String
   charEncoding : Maybe (PType String)
   locale       : Maybe (PType String)
@@ -46,28 +46,22 @@ record Import where
   semi          : PType ()
 
 public export
-record RuleName where
-  constructor MkRuleName
-  ruleName     : WithBrackets (PType String)
-
-public export
-record Weight where
-  constructor MkWeight
-  value   : PType String
+Weight : Type
+Weight = PType String
 
 public export
 record RuleDef where
   constructor MkRuleDef
   modifier    : Maybe (PType String)
-  ruleName    : RuleName
+  ruleName    : WithBrackets (PType String)
   tag         : Maybe (WithBrackets (PType String))
   equals      : PType String
 
 public export
 data RuleExpansion : Type where
-  Token    : Maybe Weight -> PType String -> RuleExpansion
+  Token    : (weight : Maybe (PType String)) -> PType String -> RuleExpansion
   Operator : PType String -> RuleExpansion
-  RuleRef  : Maybe Weight -> (ruleName : WithBrackets (PType String)) -> RuleExpansion
+  RuleRef  : (weight : Maybe (PType String)) -> (ruleName : WithBrackets (PType String)) -> RuleExpansion
   Group    : WithBrackets RuleExpansion -> RuleExpansion
   Tag      : WithBrackets (PType String) -> RuleExpansion
   Sequence : List1 RuleExpansion -> RuleExpansion
