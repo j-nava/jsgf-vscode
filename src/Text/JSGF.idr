@@ -46,6 +46,7 @@ export
 docToTree : C.Doc -> Result A.Tree
 docToTree doc = pure $ A.MkTree
   { packageName = fromCValue doc.grammarName.packageName
+  , imports = (fromCValue . .packageName.value) <$> doc.imports
   , rules = !(traverse rule doc.rules)
   }
 
@@ -83,18 +84,18 @@ export
 jsgfParseCurrent : MonadError ErrorResult m => (URI Relative -> m (URI Absolute, FileData)) -> (URI Absolute, FileData) -> ParsedFiles -> m ParsedFiles
 jsgfParseCurrent readFileTextFn (uri,filedata) =
 
-  parseCurrentFile >=> parseDependencies
+  parseCurrentFile >=> findAndParseDependencies
 
   where
-  parseCurrentFile : ParsedFiles -> m ParsedFiles
+  parseCurrentFile : ParsedFiles -> m (ParsedFile, ParsedFiles)
   parseCurrentFile pfs = do
     jsgf <- liftEither (jsgfParse filedata)
-    pure (upsertJSGF jsgf)
+    pure (jsgf, upsertJSGF jsgf)
     where
     upsertJSGF : JSGF -> ParsedFiles
     upsertJSGF jsgf = case isJust $ find (== uri) (.uri <$> pfs) of
       True  => (\pf => if pf.uri == uri then { jsgf := jsgf } pf else pf) <$> pfs
       False => ((MkParsedFile { uri = uri, jsgf = jsgf}) :: pfs)
 
-  parseDependencies : ParsedFiles -> m ParsedFiles
-  parseDependencies pfs = ?parseDependencies_rhs
+  findAndParseDependencies : (ParsedFile, ParsedFiles) -> m ParsedFiles
+  findAndParseDependencies pfs = ?parseDependencies_rhs

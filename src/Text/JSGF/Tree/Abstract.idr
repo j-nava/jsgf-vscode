@@ -39,4 +39,5 @@ public export
 record Tree where
   constructor MkTree
   packageName  : TType String
+  imports      : List (TType String)
   rules        : List Rule
