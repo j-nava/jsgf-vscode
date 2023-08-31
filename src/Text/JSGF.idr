@@ -1,5 +1,8 @@
 module Text.JSGF
 
+import Control.Monad.Either
+import Data.List
+
 import public Text.JSGF.Tree.Concrete as C
 import public Text.JSGF.Tree.Abstract as A
 import public Text.JSGF.Parser
@@ -7,10 +10,37 @@ import public Text.Parser
 import public Text.JSGF.Parser.Token
 
 public export
+data URIType = Absolute | Relative
+
+public export
+data URI : (ut : URIType) -> Type where
+  MkURI : String -> URI ut
+public export
+FromString (URI a) where
+  fromString = MkURI
+public export
+Eq (URI a) where
+  (==) (MkURI x) (MkURI y) = x == y
+
+public export
+FileData : Type
+FileData = String
+
+public export
 record JSGF where
   constructor MkJSGF
   concrete : C.Doc
   abstract : A.Tree
+
+public export
+record ParsedFile where
+  constructor MkParsedFile
+  uri  : URI Absolute
+  jsgf : JSGF
+
+public export
+ParsedFiles : Type
+ParsedFiles = List ParsedFile
 
 export
 docToTree : C.Doc -> Result A.Tree
@@ -48,3 +78,23 @@ jsgfParse s = do
   doc <- parseDoc s
   tree <- docToTree doc
   pure $ MkJSGF { concrete = doc, abstract = tree }
+
+export
+jsgfParseCurrent : MonadError ErrorResult m => (URI Relative -> m (URI Absolute, FileData)) -> (URI Absolute, FileData) -> ParsedFiles -> m ParsedFiles
+jsgfParseCurrent readFileTextFn (uri,filedata) =
+
+  parseCurrentFile >=> parseDependencies
+
+  where
+  parseCurrentFile : ParsedFiles -> m ParsedFiles
+  parseCurrentFile pfs = do
+    jsgf <- liftEither (jsgfParse filedata)
+    pure (upsertJSGF jsgf)
+    where
+    upsertJSGF : JSGF -> ParsedFiles
+    upsertJSGF jsgf = case isJust $ find (== uri) (.uri <$> pfs) of
+      True  => (\pf => if pf.uri == uri then { jsgf := jsgf } pf else pf) <$> pfs
+      False => ((MkParsedFile { uri = uri, jsgf = jsgf}) :: pfs)
+
+  parseDependencies : ParsedFiles -> m ParsedFiles
+  parseDependencies pfs = ?parseDependencies_rhs

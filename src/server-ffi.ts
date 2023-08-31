@@ -240,6 +240,10 @@ export function getText(textDocument: TextDocument): string {
   return textDocument.getText();
 }
 
+export function getUri(textDocument: TextDocument): string {
+  return textDocument.uri;
+}
+
 export function mkDiagnostic(isError: boolean, message: string, source: string, startLine: number, startCol: number, endLine: number, endCol: number) {
   const diagnostic: Diagnostic = {
   	severity: isError ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning,

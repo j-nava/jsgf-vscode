@@ -1,5 +1,8 @@
 module Server
 
+import Control.Monad.Either
+import Control.Monad.Trans
+import Data.IORef
 import Text.JSGF
 
 import Server.Common
@@ -15,15 +18,27 @@ export prim__onChangeConfig : State -> (State -> TextDocument -> IO ()) -> PrimI
 export prim__onChange : State -> (State -> TextDocument -> IO ()) -> PrimIO ()
 %foreign "javascript:lambda:(document) => require('./server-ffi').getText(document)"
 export prim__getText : TextDocument -> PrimIO String
+%foreign "javascript:lambda:(document) => require('./server-ffi').getUri(document)"
+export prim__getUri : TextDocument -> PrimIO String
 
-validate : State -> TextDocument -> IO ()
-validate state doc = do
+record ServerState where
+  constructor MkServerState
+  parsedFiles  : IORef (List ParsedFile)
+
+validate : ServerState -> State -> TextDocument -> IO ()
+validate serverState state doc = do
   text <- primIO (prim__getText doc)
   ds <- primIO prim__mkDiagnostics
-  case jsgfParse text of
-    Left errors => do
-      traverse_ (processError ds) errors
-    Right jsgf => pure ()
+  pfs <- readIORef serverState.parsedFiles
+  uri <- primIO (prim__getUri doc)
+  let
+    readFileTextFn : URI Relative -> EitherT ErrorResult IO (URI Absolute, FileData)
+    readFileTextFn = ?rftimpl
+    parsedFiles : EitherT ErrorResult IO ParsedFiles
+    parsedFiles = jsgfParseCurrent readFileTextFn ((fromString uri),text) pfs
+  runEitherT parsedFiles >>= \case
+    Right newPfs => writeIORef serverState.parsedFiles newPfs
+    Left errors => traverse_ (processError ds) errors
   primIO (prim__sendDiagnostics state doc ds)
 
   where
@@ -38,9 +53,11 @@ validate state doc = do
 main : IO ()
 main = do
   state <- primIO (prim__load)
+  parsedFiles <- newIORef []
+  let serverState = MkServerState { parsedFiles = parsedFiles }
   primIO (prim__start state)
-  primIO (prim__onChangeConfig state validate)
-  primIO (prim__onChange state validate)
+  primIO (prim__onChangeConfig state (validate serverState))
+  primIO (prim__onChange state (validate serverState))
 
   -- async function validateTextDocument(textDocument: TextDocument): Promise<void> {
   --   const text = textDocument.getText();
