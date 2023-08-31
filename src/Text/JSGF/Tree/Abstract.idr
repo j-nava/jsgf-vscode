@@ -13,6 +13,14 @@ TType : Type -> Type
 TType a = (a, Ann)
 
 public export
+Import : Type
+Import = TType String
+
+public export
+RuleName : Type
+RuleName = TType String
+
+public export
 data UnaryOperator = KleeneStar | PlusOperator
 
 public export
@@ -24,14 +32,14 @@ data RuleExpr : Type where
   Tag         : TType String -> RuleExpr
   UnaryOp     : TType UnaryOperator -> RuleExpr
   Alternative : Ann -> RuleExpr
-  RuleRef     : TType String -> RuleExpr
+  RuleRef     : RuleName -> RuleExpr
   Group       : GroupType -> RuleExpr -> RuleExpr
   Sequence    : List1 RuleExpr -> RuleExpr
 
 public export
 record Rule where
   constructor MkRule
-  name     : TType String
+  name     : RuleName
   isPublic : Bool
   expr     : RuleExpr
 
@@ -39,5 +47,26 @@ public export
 record Tree where
   constructor MkTree
   packageName  : TType String
-  imports      : List (TType String)
+  imports      : List Import
   rules        : List Rule
+
+
+export
+traverseTree : Monad m => (Import -> m Import) -> ((isRef : Bool) -> RuleName -> m RuleName) -> Tree -> m Tree
+traverseTree iFn rnFn tree = pure $ 
+  { imports := !(traverse traverseImport tree.imports)
+  , rules   := !(traverse traverseRule tree.rules) 
+  } tree
+
+  where
+  traverseImport : Import -> m Import
+  traverseImport = iFn
+
+  traverseRuleExpr : RuleExpr -> m RuleExpr
+  traverseRuleExpr (RuleRef rn)     = RuleRef <$> rnFn True rn
+  traverseRuleExpr (Group gt expr)  = Group <$> pure gt <*> traverseRuleExpr expr
+  traverseRuleExpr (Sequence exprs) = Sequence <$> traverse traverseRuleExpr exprs
+  traverseRuleExpr re               = pure re
+
+  traverseRule : Rule -> m Rule
+  traverseRule r = pure $ { name := !(rnFn False r.name) } r

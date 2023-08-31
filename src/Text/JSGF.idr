@@ -1,13 +1,14 @@
 module Text.JSGF
 
 import Control.Monad.Either
+import Data.String
 import Data.List
 
+import public Text.JSGF.Parser.Token
 import public Text.JSGF.Tree.Concrete as C
 import public Text.JSGF.Tree.Abstract as A
 import public Text.JSGF.Parser
 import public Text.Parser
-import public Text.JSGF.Parser.Token
 
 public export
 data URIType = Absolute | Relative
@@ -84,10 +85,10 @@ export
 jsgfParseCurrent : MonadError ErrorResult m => (URI Relative -> m (URI Absolute, FileData)) -> (URI Absolute, FileData) -> ParsedFiles -> m ParsedFiles
 jsgfParseCurrent readFileTextFn (uri,filedata) =
 
-  parseCurrentFile >=> findAndParseDependencies
+  parseCurrentFile >=> findAndParseDependencies >=> pure . snd
 
   where
-  parseCurrentFile : ParsedFiles -> m (ParsedFile, ParsedFiles)
+  parseCurrentFile : ParsedFiles -> m (JSGF, ParsedFiles)
   parseCurrentFile pfs = do
     jsgf <- liftEither (jsgfParse filedata)
     pure (jsgf, upsertJSGF jsgf)
@@ -97,5 +98,16 @@ jsgfParseCurrent readFileTextFn (uri,filedata) =
       True  => (\pf => if pf.uri == uri then { jsgf := jsgf } pf else pf) <$> pfs
       False => ((MkParsedFile { uri = uri, jsgf = jsgf}) :: pfs)
 
-  findAndParseDependencies : (ParsedFile, ParsedFiles) -> m ParsedFiles
-  findAndParseDependencies pfs = ?parseDependencies_rhs
+  findAndParseDependencies : (JSGF, ParsedFiles) -> m (JSGF, ParsedFiles)
+  findAndParseDependencies (jsgf, pfs) = do
+    newtree <- A.traverseTree importFn ruleNameFn jsgf.abstract
+    pure (jsgf, pfs)
+
+    where
+    importFn : A.Import -> m A.Import
+    importFn (imp, ann) = 
+      let imp' = joinBy "/" (forget (split (== '.') imp))
+      in pure (imp', ann)
+
+    ruleNameFn : Bool -> RuleName -> m RuleName    
+    ruleNameFn isRef rn = ?ruleNameFn_rhs
