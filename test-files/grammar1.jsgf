@@ -1,0 +1,20 @@
+
+#JSGF V1.0 日べました abc;
+
+grammar mypkg.grname;
+
+import <mylib.*>;
+// import <abc.def.gglol2.*>; 
+
+public <rulea> = aa <ruleb>;  // faskjdlfasdkljfa
+
+/* fakl;sd;alsjdflakj */
+
+<ruleb> = ( // asdklafjsdlfjal
+  a |
+  [/gg/ b | /3/ gg ]) |
+  c;
+
+<gg>{gen = ?g} = (c* | <myrule>){gen=?g}; /* askld;fajsd l;as */
+
+// fasdklfjasdlfkasdasd

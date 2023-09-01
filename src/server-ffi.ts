@@ -18,6 +18,10 @@ import {
 	TextDocument,
 } from "vscode-languageserver-textdocument";
 
+import * as path from "path";
+import * as url from "url";
+import * as fs from "fs";
+
 const defaultSettings: ExampleSettings = { maxNumberOfProblems: 1000 };
 
 interface State {
@@ -114,53 +118,6 @@ export function load(): State {
     documentSettings.delete(e.document.uri);
   });
 
-  // async function validateTextDocument(textDocument: TextDocument): Promise<void> {
-  // 	// In this simple example we get the settings for every validate run.
-  // 	const settings = await getDocumentSettings(textDocument.uri);
-
-  // 	// The validator creates diagnostics for all uppercase words length 2 and more
-  // 	const text = textDocument.getText();
-  // 	const pattern = /\b[A-Z]{2,}\b/g;
-  // 	let m: RegExpExecArray | null;
-
-  // 	let problems = 0;
-  // 	const diagnostics: Diagnostic[] = [];
-  // 	while ((m = pattern.exec(text)) && problems < settings.maxNumberOfProblems) {
-  // 		problems++;
-  // 		const diagnostic: Diagnostic = {
-  // 			severity: DiagnosticSeverity.Warning,
-  // 			range: {
-  // 				start: textDocument.positionAt(m.index),
-  // 				end: textDocument.positionAt(m.index + m[0].length)
-  // 			},
-  // 			message: `${m[0]} is all uppercase.`,
-  // 			source: "ex"
-  // 		};
-  // 		if (hasDiagnosticRelatedInformationCapability) {
-  // 			diagnostic.relatedInformation = [
-  // 				{
-  // 					location: {
-  // 						uri: textDocument.uri,
-  // 						range: Object.assign({}, diagnostic.range)
-  // 					},
-  // 					message: "Spelling matters"
-  // 				},
-  // 				{
-  // 					location: {
-  // 						uri: textDocument.uri,
-  // 						range: Object.assign({}, diagnostic.range)
-  // 					},
-  // 					message: "Particularly for names"
-  // 				}
-  // 			];
-  // 		}
-  // 		diagnostics.push(diagnostic);
-  // 	}
-
-  // 	// Send the computed diagnostics to VSCode.
-  // 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
-  // }
-
   connection.onDidChangeWatchedFiles(_change => {
     // Monitored files have change in VSCode
     connection.console.log("We received a file change event");
@@ -202,6 +159,44 @@ export function load(): State {
     }
   );
 
+  // connection.onSignatureHelp(textDocumentPosition => {
+  //   const document = documents.get(textDocumentPosition.textDocument.uri);
+  //   const position = textDocumentPosition.position;
+  //   // Implement signature help logic here and return relevant information
+  // });
+
+  // connection.onHover(textDocumentPosition => {
+  //   const document = documents.get(textDocumentPosition.textDocument.uri);
+  //   const position = textDocumentPosition.position;
+  //   // Implement hover information logic here and return relevant details
+  // });
+
+  // documents.onDidChangeContent(change => {
+  //   const document = change.document;
+  //   const diagnostics = validateDocument(document);
+  //   connection.sendDiagnostics({ uri: document.uri, diagnostics });
+  // });
+  // connection.onDocumentFormatting(formattingParams => {
+  //   const document = documents.get(formattingParams.textDocument.uri);
+  //   // Implement code formatting logic here and return formatted content
+  // });
+
+  // connection.onFoldingRanges(foldingRangeParams => {
+  //   const document = documents.get(foldingRangeParams.textDocument.uri);
+  //   // Implement code folding logic here and return folding ranges
+  // });
+
+  // connection.onReferences(referenceParams => {
+  //   const document = documents.get(referenceParams.textDocument.uri);
+  //   const position = referenceParams.position;
+  //   // Implement find references logic here and return references
+  // });
+
+  // connection.onWorkspaceSymbol(workspaceSymbolParams => {
+  //   const query = workspaceSymbolParams.query;
+  //   // Implement symbol search logic here and return symbol matches
+  // });
+
   // Make the text document manager listen on the connection
   // for open, change and close text document events
   documents.listen(connection);
@@ -242,6 +237,29 @@ export function getText(textDocument: TextDocument): string {
 
 export function getUri(textDocument: TextDocument): string {
   return textDocument.uri;
+}
+
+export function getFullUri(abs: string, rel: string): string {
+  const dir: string = path.dirname(abs);
+  return path.join(dir, rel);
+}
+
+// export async function getTextFromUri(state: State, path: string): Promise<string> {
+//   var res: string = "";
+//   await state.connection.sendRequest("getFile", path).then((body: string) => {
+//     if (body !== undefined && body.length) res = body;
+//     else res = "";
+//   });
+//   return res;
+// }
+
+export function getTextFromUri(state: State, path: string): string {
+  // TODO: check if file is open in Editor. If so, read contents from there. If not, open from filesystem
+  // state.connection.console.info(`Reading contents of file '${path}'`);
+  showInformationMessage(state, new URL(path).toString());
+  const filedata = fs.readFileSync(new URL(path), "utf8");
+  showInformationMessage(state, `${filedata}`)
+  return filedata;
 }
 
 export function mkDiagnostic(isError: boolean, message: string, source: string, startLine: number, startCol: number, endLine: number, endCol: number) {

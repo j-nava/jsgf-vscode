@@ -78,6 +78,7 @@ import_ : Grammar state JSGFToken True Import
 import_ = do
   keyword      <- matchKeyword "import"
   packageName  <- between' [JSGFAngBracket] matchTextDotStar
+  when (isNothing $ find (== '.') (unpack $ fst packageName.value)) $ fail "Missing grammar name"
   semi         <- withSpace JSGFSemi
   pure (MkImport keyword packageName semi)
 

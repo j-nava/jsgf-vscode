@@ -3,6 +3,7 @@ module Server
 import Control.Monad.Either
 import Control.Monad.Trans
 import Data.IORef
+import System.File.Types
 import Text.JSGF
 
 import Server.Common
@@ -20,6 +21,16 @@ export prim__onChange : State -> (State -> TextDocument -> IO ()) -> PrimIO ()
 export prim__getText : TextDocument -> PrimIO String
 %foreign "javascript:lambda:(document) => require('./server-ffi').getUri(document)"
 export prim__getUri : TextDocument -> PrimIO String
+%foreign "javascript:lambda:(curUri, relUri) => require('./server-ffi').getFullUri(curUri, relUri)"
+export prim__getFullUri : (curUri : String) -> (relUri : String) -> PrimIO String
+%foreign "javascript:lambda:async (state, uri) => await require('./server-ffi').getTextFromUri(state, uri)"
+export prim__getTextFromUri : State -> (uri : String) -> PrimIO String
+
+getFullUri : HasIO io => Uri Absolute -> Uri Relative -> io (Uri Absolute)
+getFullUri (MkUri curUri) (MkUri relUri) = primIO (prim__getFullUri curUri relUri) >>= pure . MkUri
+
+getTextFromUri : HasIO io => State -> Uri Absolute -> io FileData
+getTextFromUri state (MkUri uri) = primIO (prim__getTextFromUri state uri) 
 
 record ServerState where
   constructor MkServerState
@@ -32,12 +43,8 @@ validate serverState state doc = do
   pfs <- readIORef serverState.parsedFiles
   uri <- primIO (prim__getUri doc)
   let
-    convertUriFn : Uri Relative -> Uri Absolute
-    convertUriFn = ?convuri
-    readFileTextFn : Uri Absolute -> EitherT ErrorResult IO FileData
-    readFileTextFn = ?rftimpl
     parsedFiles : EitherT ErrorResult IO ParsedFiles
-    parsedFiles = jsgfParseCurrent convertUriFn readFileTextFn ((fromString uri),text) pfs
+    parsedFiles = jsgfParseCurrent getFullUri (getTextFromUri state) ((fromString uri),text) pfs
   runEitherT parsedFiles >>= \case
     Right newPfs => writeIORef serverState.parsedFiles newPfs
     Left errors => traverse_ (processError ds) errors

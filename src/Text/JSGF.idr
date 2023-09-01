@@ -89,8 +89,14 @@ jsgfParse s = do
   pure $ MkJSGF { concrete = doc, abstract = tree }
 
 export
-jsgfParseCurrent : MonadError ErrorResult m => (Uri Relative -> Uri Absolute) -> (Uri Absolute -> m FileData) -> (Uri Absolute, FileData) -> ParsedFiles -> m ParsedFiles
-jsgfParseCurrent convertUriFn readUriTextFn (uri, filedata) =
+jsgfParseCurrent : 
+  MonadError ErrorResult m => 
+  ((currentFileLocation : Uri Absolute) -> (locationRelatedToCurrentFile : Uri Relative) -> m (Uri Absolute)) -> 
+  (Uri Absolute -> m FileData) -> 
+  (Uri Absolute, FileData) -> 
+  ParsedFiles -> 
+  m ParsedFiles
+jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFiledata) =
 
   parseCurrentFile >=> findAndParseDependencies >=> pure . snd
 
@@ -105,8 +111,8 @@ jsgfParseCurrent convertUriFn readUriTextFn (uri, filedata) =
 
   parseCurrentFile : ParsedFiles -> m (JSGF, ParsedFiles)
   parseCurrentFile pfs = do
-    jsgf <- liftEither (jsgfParse filedata)
-    pure (jsgf, upsertJSGF pfs (uri, jsgf))
+    jsgf <- liftEither (jsgfParse currentFiledata)
+    pure (jsgf, upsertJSGF pfs (currentUri, jsgf))
 
   findAndParseDependencies : (JSGF, ParsedFiles) -> m (JSGF, ParsedFiles)
   findAndParseDependencies (jsgf, pfs) = do
@@ -116,15 +122,13 @@ jsgfParseCurrent convertUriFn readUriTextFn (uri, filedata) =
 
     where
     parseDepIfNeeded : ParsedFiles -> Uri Relative -> m ParsedFiles
-    parseDepIfNeeded pfs uri = 
-      let
-        uriA = convertUriFn uri
-      in
-        case hasUri uriA pfs of
-          True  => pure pfs
-          False => do
-            filedata <- readUriTextFn uriA
-            jsgfParseCurrent convertUriFn readUriTextFn (uriA, filedata) pfs
+    parseDepIfNeeded pfs uri = do
+      uriA <- convertUriFn currentUri uri
+      case hasUri uriA pfs of
+        True  => pure pfs
+        False => do
+          filedata <- readUriTextFn uriA
+          jsgfParseCurrent convertUriFn readUriTextFn (uriA, filedata) pfs
 
     fetchDeps : m (List (Uri Relative))
     fetchDeps =
@@ -137,7 +141,7 @@ jsgfParseCurrent convertUriFn readUriTextFn (uri, filedata) =
         let
           dirs = forget $ split (== '.') pn 
           dir : Uri Relative
-          dir = fromString $ joinBy "/" dirs
+          dir = fromString $ (joinBy "/" dirs) ++ ".jsgf"
         in modify ((::) dir)
 
       importFn : A.Import -> StateT (List (Uri Relative)) m A.Import

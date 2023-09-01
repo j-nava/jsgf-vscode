@@ -1,0 +1,5 @@
+#JSGF V1.0;
+
+grammar mylib;
+
+public <librule1> = a | b | c;

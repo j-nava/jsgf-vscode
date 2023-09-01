@@ -1,5 +1,5 @@
 import * as path from "path";
-import { workspace, ExtensionContext } from "vscode";
+import { workspace, ExtensionContext, Uri } from "vscode";
 
 import {
 	LanguageClient,
@@ -26,7 +26,7 @@ export function activate(context: ExtensionContext) {
 	const clientOptions: LanguageClientOptions = {
 		documentSelector: [{ scheme: "file", language: "jsgf" }],
 		synchronize: {
-			fileEvents: workspace.createFileSystemWatcher("**/.clientrc")
+			fileEvents: workspace.createFileSystemWatcher("**/*.jsgf")
 		}
 	};
 
