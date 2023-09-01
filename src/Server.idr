@@ -32,10 +32,12 @@ validate serverState state doc = do
   pfs <- readIORef serverState.parsedFiles
   uri <- primIO (prim__getUri doc)
   let
-    readFileTextFn : URI Relative -> EitherT ErrorResult IO (URI Absolute, FileData)
+    convertUriFn : Uri Relative -> Uri Absolute
+    convertUriFn = ?convuri
+    readFileTextFn : Uri Absolute -> EitherT ErrorResult IO FileData
     readFileTextFn = ?rftimpl
     parsedFiles : EitherT ErrorResult IO ParsedFiles
-    parsedFiles = jsgfParseCurrent readFileTextFn ((fromString uri),text) pfs
+    parsedFiles = jsgfParseCurrent convertUriFn readFileTextFn ((fromString uri),text) pfs
   runEitherT parsedFiles >>= \case
     Right newPfs => writeIORef serverState.parsedFiles newPfs
     Left errors => traverse_ (processError ds) errors

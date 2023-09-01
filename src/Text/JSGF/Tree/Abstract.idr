@@ -13,8 +13,13 @@ TType : Type -> Type
 TType a = (a, Ann)
 
 public export
-Import : Type
-Import = TType String
+data ImportRuleName = AllGrammars | OneGrammar String
+
+public export
+record Import where
+  constructor MkImport
+  packageName : TType String
+  ruleName    : ImportRuleName
 
 public export
 RuleName : Type

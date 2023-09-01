@@ -3,6 +3,7 @@ module Text.JSGF
 import Control.Monad.Either
 import Data.String
 import Data.List
+import Control.Monad.State
 
 import public Text.JSGF.Parser.Token
 import public Text.JSGF.Tree.Concrete as C
@@ -11,17 +12,17 @@ import public Text.JSGF.Parser
 import public Text.Parser
 
 public export
-data URIType = Absolute | Relative
+data UriType = Absolute | Relative
 
 public export
-data URI : (ut : URIType) -> Type where
-  MkURI : String -> URI ut
+data Uri : (ut : UriType) -> Type where
+  MkUri : String -> Uri ut
 public export
-FromString (URI a) where
-  fromString = MkURI
+FromString (Uri a) where
+  fromString = MkUri
 public export
-Eq (URI a) where
-  (==) (MkURI x) (MkURI y) = x == y
+Eq (Uri a) where
+  (==) (MkUri x) (MkUri y) = x == y
 
 public export
 FileData : Type
@@ -36,7 +37,7 @@ record JSGF where
 public export
 record ParsedFile where
   constructor MkParsedFile
-  uri  : URI Absolute
+  uri  : Uri Absolute
   jsgf : JSGF
 
 public export
@@ -47,7 +48,7 @@ export
 docToTree : C.Doc -> Result A.Tree
 docToTree doc = pure $ A.MkTree
   { packageName = fromCValue doc.grammarName.packageName
-  , imports = (fromCValue . .packageName.value) <$> doc.imports
+  , imports = !(traverse importFromString doc.imports)
   , rules = !(traverse rule doc.rules)
   }
 
@@ -57,6 +58,12 @@ docToTree doc = pure $ A.MkTree
 
   fromCValue : C.PType a -> A.TType a 
   fromCValue (value, ann) = (value, fromCAnn ann)
+
+  importFromString : C.Import -> Result A.Import
+  importFromString imp =
+    case reverse $ trim <$> forget (split (== '.') (fst imp.packageName.value)) of
+      (rn::nss)  => pure $ A.MkImport { packageName = (joinBy "." (reverse nss), fromCAnn $ snd imp.packageName.value), ruleName = if rn == "*" then A.AllGrammars else A.OneGrammar rn }
+      Nil => Left $ singleton $ Error "Import: invalid package '\{fst imp.packageName.value}'" (Just (snd imp.packageName.value).position)
 
   ruleExpansion : C.RuleExpansion -> Result A.RuleExpr
   ruleExpansion (C.Token _ token) = pure $ A.Token (fromCValue token)
@@ -82,32 +89,64 @@ jsgfParse s = do
   pure $ MkJSGF { concrete = doc, abstract = tree }
 
 export
-jsgfParseCurrent : MonadError ErrorResult m => (URI Relative -> m (URI Absolute, FileData)) -> (URI Absolute, FileData) -> ParsedFiles -> m ParsedFiles
-jsgfParseCurrent readFileTextFn (uri,filedata) =
+jsgfParseCurrent : MonadError ErrorResult m => (Uri Relative -> Uri Absolute) -> (Uri Absolute -> m FileData) -> (Uri Absolute, FileData) -> ParsedFiles -> m ParsedFiles
+jsgfParseCurrent convertUriFn readUriTextFn (uri, filedata) =
 
   parseCurrentFile >=> findAndParseDependencies >=> pure . snd
 
   where
+  hasUri : Uri Absolute -> ParsedFiles -> Bool
+  hasUri uri pfs = isJust $ find (== uri) (.uri <$> pfs)
+
+  upsertJSGF : ParsedFiles -> (Uri Absolute, JSGF) -> ParsedFiles
+  upsertJSGF pfs (uri,jsgf) = case hasUri uri pfs of
+    True  => (\pf => if pf.uri == uri then { jsgf := jsgf } pf else pf) <$> pfs
+    False => ((MkParsedFile { uri = uri, jsgf = jsgf}) :: pfs)
+
   parseCurrentFile : ParsedFiles -> m (JSGF, ParsedFiles)
   parseCurrentFile pfs = do
     jsgf <- liftEither (jsgfParse filedata)
-    pure (jsgf, upsertJSGF jsgf)
-    where
-    upsertJSGF : JSGF -> ParsedFiles
-    upsertJSGF jsgf = case isJust $ find (== uri) (.uri <$> pfs) of
-      True  => (\pf => if pf.uri == uri then { jsgf := jsgf } pf else pf) <$> pfs
-      False => ((MkParsedFile { uri = uri, jsgf = jsgf}) :: pfs)
+    pure (jsgf, upsertJSGF pfs (uri, jsgf))
 
   findAndParseDependencies : (JSGF, ParsedFiles) -> m (JSGF, ParsedFiles)
   findAndParseDependencies (jsgf, pfs) = do
-    newtree <- A.traverseTree importFn ruleNameFn jsgf.abstract
-    pure (jsgf, pfs)
+    deps <- fetchDeps
+    pfs' <- foldlM parseDepIfNeeded pfs deps
+    pure (jsgf, pfs')
 
     where
-    importFn : A.Import -> m A.Import
-    importFn (imp, ann) = 
-      let imp' = joinBy "/" (forget (split (== '.') imp))
-      in pure (imp', ann)
+    parseDepIfNeeded : ParsedFiles -> Uri Relative -> m ParsedFiles
+    parseDepIfNeeded pfs uri = 
+      let
+        uriA = convertUriFn uri
+      in
+        case hasUri uriA pfs of
+          True  => pure pfs
+          False => do
+            filedata <- readUriTextFn uriA
+            jsgfParseCurrent convertUriFn readUriTextFn (uriA, filedata) pfs
 
-    ruleNameFn : Bool -> RuleName -> m RuleName    
-    ruleNameFn isRef rn = ?ruleNameFn_rhs
+    fetchDeps : m (List (Uri Relative))
+    fetchDeps =
+
+      execStateT [] $ A.traverseTree importFn ruleNameFn jsgf.abstract
+
+      where
+      addDir : String -> StateT (List (Uri Relative)) m ()
+      addDir pn =
+        let
+          dirs = forget $ split (== '.') pn 
+          dir : Uri Relative
+          dir = fromString $ joinBy "/" dirs
+        in modify ((::) dir)
+
+      importFn : A.Import -> StateT (List (Uri Relative)) m A.Import
+      importFn imp = do
+        addDir (fst imp.packageName) 
+        pure imp
+
+      ruleNameFn : Bool -> RuleName -> StateT (List (Uri Relative)) m RuleName
+      ruleNameFn True rn = do
+        addDir (fst rn)
+        pure rn
+      ruleNameFn False rn = pure rn
