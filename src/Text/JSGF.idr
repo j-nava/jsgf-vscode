@@ -12,6 +12,10 @@ import public Text.JSGF.Parser
 import public Text.Parser
 
 public export
+data Position : Type where
+  MkPosition : (line : Int) -> (col : Int) -> Position
+
+public export
 data UriType = Absolute | Relative
 
 public export
@@ -23,22 +27,31 @@ FromString (Uri a) where
 public export
 Eq (Uri a) where
   (==) (MkUri x) (MkUri y) = x == y
+public export
+Show (Uri a) where
+  show (MkUri s) = s
 
 public export
 FileData : Type
 FileData = String
 
 public export
-record JSGF where
-  constructor MkJSGF
+record Context where
+  constructor MkContext
+  ruleNames : List String
+
+public export
+record Trees where
+  constructor MkTrees
   concrete : C.Doc
   abstract : A.Tree
 
 public export
 record ParsedFile where
   constructor MkParsedFile
-  uri  : Uri Absolute
-  jsgf : JSGF
+  uri     : Uri Absolute
+  trees   : Trees
+  context : Context
 
 public export
 ParsedFiles : Type
@@ -82,11 +95,11 @@ docToTree doc = pure $ A.MkTree
   rule cr = pure $ A.MkRule { name = fromCValue cr.ruleDef.ruleName.value, isPublic = maybe False ((==) "public" . fst) cr.ruleDef.modifier, expr = !(ruleExpansion cr.expansion) }
 
 export
-jsgfParse : String -> Result JSGF
+jsgfParse : String -> Result Trees
 jsgfParse s = do
   doc <- parseDoc s
   tree <- docToTree doc
-  pure $ MkJSGF { concrete = doc, abstract = tree }
+  pure $ MkTrees { concrete = doc, abstract = tree }
 
 export
 jsgfParseCurrent : 
@@ -96,7 +109,7 @@ jsgfParseCurrent :
   (Uri Absolute, FileData) -> 
   ParsedFiles -> 
   m ParsedFiles
-jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFiledata) =
+jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
 
   parseCurrentFile >=> findAndParseDependencies >=> pure . snd
 
@@ -104,21 +117,22 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFiledata) =
   hasUri : Uri Absolute -> ParsedFiles -> Bool
   hasUri uri pfs = isJust $ find (== uri) (.uri <$> pfs)
 
-  upsertJSGF : ParsedFiles -> (Uri Absolute, JSGF) -> ParsedFiles
-  upsertJSGF pfs (uri,jsgf) = case hasUri uri pfs of
-    True  => (\pf => if pf.uri == uri then { jsgf := jsgf } pf else pf) <$> pfs
-    False => ((MkParsedFile { uri = uri, jsgf = jsgf}) :: pfs)
+  upsertTrees : ParsedFiles -> ParsedFile -> ParsedFiles
+  upsertTrees pfs pf = case hasUri pf.uri pfs of
+    True  => (\pf' => if pf'.uri == pf.uri then { trees := pf.trees } pf' else pf') <$> pfs
+    False => (pf :: pfs)
 
-  parseCurrentFile : ParsedFiles -> m (JSGF, ParsedFiles)
+  parseCurrentFile : ParsedFiles -> m (ParsedFile, ParsedFiles)
   parseCurrentFile pfs = do
-    jsgf <- liftEither (jsgfParse currentFiledata)
-    pure (jsgf, upsertJSGF pfs (currentUri, jsgf))
+    trees <- liftEither (jsgfParse currentFileData)
+    let pf = MkParsedFile { uri = currentUri, trees = trees, context = MkContext [] }
+    pure (pf, upsertTrees pfs pf)
 
-  findAndParseDependencies : (JSGF, ParsedFiles) -> m (JSGF, ParsedFiles)
-  findAndParseDependencies (jsgf, pfs) = do
+  findAndParseDependencies : (ParsedFile, ParsedFiles) -> m (ParsedFile, ParsedFiles)
+  findAndParseDependencies (pf, pfs) = do
     deps <- fetchDeps
     pfs' <- foldlM parseDepIfNeeded pfs deps
-    pure (jsgf, pfs')
+    pure (pf, pfs')
 
     where
     parseDepIfNeeded : ParsedFiles -> Uri Relative -> m ParsedFiles
@@ -130,12 +144,12 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFiledata) =
           filedata <- readUriTextFn uriA
           case filedata of
             Just filedata' => jsgfParseCurrent convertUriFn readUriTextFn (uriA, filedata') pfs
-            Nothing => pure pfs -- throwError $ Left $ ((Error "Invalid operator ''" Nothing) ::: Nil)
+            Nothing => throwError ((Error "Couldn't read file '\{show uriA}'" Nothing) ::: Nil)
 
     fetchDeps : m (List (Uri Relative))
     fetchDeps =
 
-      execStateT [] $ A.traverseTree importFn ruleNameFn jsgf.abstract
+      execStateT [] $ A.traverseTree importFn ruleNameFn pf.trees.abstract
 
       where
       addDir : String -> StateT (List (Uri Relative)) m ()
@@ -156,3 +170,9 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFiledata) =
         addDir (fst rn)
         pure rn
       ruleNameFn False rn = pure rn
+
+jsgfResolvePosition : MonadError ErrorResult m => Uri Absolute -> Position -> ParsedFiles -> m String
+jsgfResolvePosition uri (MkPosition line col) pfs = case find (\pf => pf.uri == uri) pfs of
+  Just pf => pure "GG"
+  Nothing => throwError ((Error "File not parsed '\{show uri}'" Nothing) ::: Nil)
+

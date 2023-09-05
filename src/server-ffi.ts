@@ -244,15 +244,6 @@ export function getFullUri(abs: string, rel: string): string {
   return path.join(dir, rel);
 }
 
-// export async function getTextFromUri(state: State, path: string): Promise<string> {
-//   var res: string = "";
-//   await state.connection.sendRequest("getFile", path).then((body: string) => {
-//     if (body !== undefined && body.length) res = body;
-//     else res = "";
-//   });
-//   return res;
-// }
-
 export function getTextFromUri(successFn: (val: string) => object, failVal: object, state: State, path: string): object {
   // TODO: check if file is open in Editor. If so, read contents from there. If not, open from filesystem
   try {
