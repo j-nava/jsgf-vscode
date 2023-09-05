@@ -23,14 +23,14 @@ export prim__getText : TextDocument -> PrimIO String
 export prim__getUri : TextDocument -> PrimIO String
 %foreign "javascript:lambda:(curUri, relUri) => require('./server-ffi').getFullUri(curUri, relUri)"
 export prim__getFullUri : (curUri : String) -> (relUri : String) -> PrimIO String
-%foreign "javascript:lambda:async (state, uri) => await require('./server-ffi').getTextFromUri(state, uri)"
-export prim__getTextFromUri : State -> (uri : String) -> PrimIO String
+%foreign "javascript:lambda:(successFn, failVal, state, uri) => require('./server-ffi').getTextFromUri(successFn, failVal, state, uri)"
+export prim__getTextFromUri : (String -> Maybe String) -> Maybe String -> State -> (uri : String) -> PrimIO (Maybe String)
 
 getFullUri : HasIO io => Uri Absolute -> Uri Relative -> io (Uri Absolute)
 getFullUri (MkUri curUri) (MkUri relUri) = primIO (prim__getFullUri curUri relUri) >>= pure . MkUri
 
-getTextFromUri : HasIO io => State -> Uri Absolute -> io FileData
-getTextFromUri state (MkUri uri) = primIO (prim__getTextFromUri state uri) 
+getTextFromUri : HasIO io => State -> Uri Absolute -> io (Maybe FileData)
+getTextFromUri state (MkUri uri) = primIO (prim__getTextFromUri Just Nothing state uri) 
 
 record ServerState where
   constructor MkServerState
@@ -44,7 +44,7 @@ validate serverState state doc = do
   uri <- primIO (prim__getUri doc)
   let
     parsedFiles : EitherT ErrorResult IO ParsedFiles
-    parsedFiles = jsgfParseCurrent getFullUri (getTextFromUri state) ((fromString uri),text) pfs
+    parsedFiles = jsgfParseCurrent getFullUri (getTextFromUri state) (fromString uri, text) pfs
   runEitherT parsedFiles >>= \case
     Right newPfs => writeIORef serverState.parsedFiles newPfs
     Left errors => traverse_ (processError ds) errors
@@ -53,10 +53,10 @@ validate serverState state doc = do
   where
     processError : Diagnostics -> ParsingError (Token JSGFTokenKind) -> IO ()
     processError ds e@(Error message (Just bounds)) = do
-      d <- primIO (prim__mkDiagnostic True (show e) "Parser" bounds.startLine bounds.startCol bounds.endLine bounds.endCol)
+      d <- primIO (prim__mkDiagnostic True (show e ++ "\n" ++ message) "Parser" bounds.startLine bounds.startCol bounds.endLine bounds.endCol)
       primIO (prim__pushDiagnostic ds d)
     processError ds e@(Error message Nothing) = do
-      d <- primIO (prim__mkDiagnostic True (show e) "Parser" 0 0 0 0)
+      d <- primIO (prim__mkDiagnostic True (show e ++ "\n" ++ message) "Parser" 0 0 0 0)
       primIO (prim__pushDiagnostic ds d)
 
 main : IO ()

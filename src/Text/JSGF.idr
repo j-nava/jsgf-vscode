@@ -92,7 +92,7 @@ export
 jsgfParseCurrent : 
   MonadError ErrorResult m => 
   ((currentFileLocation : Uri Absolute) -> (locationRelatedToCurrentFile : Uri Relative) -> m (Uri Absolute)) -> 
-  (Uri Absolute -> m FileData) -> 
+  (Uri Absolute -> m (Maybe FileData)) -> 
   (Uri Absolute, FileData) -> 
   ParsedFiles -> 
   m ParsedFiles
@@ -128,7 +128,9 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFiledata) =
         True  => pure pfs
         False => do
           filedata <- readUriTextFn uriA
-          jsgfParseCurrent convertUriFn readUriTextFn (uriA, filedata) pfs
+          case filedata of
+            Just filedata' => jsgfParseCurrent convertUriFn readUriTextFn (uriA, filedata') pfs
+            Nothing => pure pfs -- throwError $ Left $ ((Error "Invalid operator ''" Nothing) ::: Nil)
 
     fetchDeps : m (List (Uri Relative))
     fetchDeps =

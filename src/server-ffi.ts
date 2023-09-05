@@ -253,13 +253,15 @@ export function getFullUri(abs: string, rel: string): string {
 //   return res;
 // }
 
-export function getTextFromUri(state: State, path: string): string {
+export function getTextFromUri(successFn: (val: string) => object, failVal: object, state: State, path: string): object {
   // TODO: check if file is open in Editor. If so, read contents from there. If not, open from filesystem
-  // state.connection.console.info(`Reading contents of file '${path}'`);
-  showInformationMessage(state, new URL(path).toString());
-  const filedata = fs.readFileSync(new URL(path), "utf8");
-  showInformationMessage(state, `${filedata}`)
-  return filedata;
+  try {
+    const filedata = fs.readFileSync(new URL(path), "utf8");
+    return successFn(filedata);
+  }
+  catch (e) {
+    return failVal;
+  }
 }
 
 export function mkDiagnostic(isError: boolean, message: string, source: string, startLine: number, startCol: number, endLine: number, endCol: number) {
