@@ -123,42 +123,6 @@ export function load(): State {
     connection.console.log("We received a file change event");
   });
 
-  // This handler provides the initial list of the completion items.
-  connection.onCompletion(
-    (_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-      // The pass parameter contains the position of the text document in
-      // which code complete got requested. For the example we ignore this
-      // info and always provide the same completion items.
-      return [
-        {
-          label: 'TypeScript',
-          kind: CompletionItemKind.Text,
-          data: 1
-        },
-        {
-          label: 'JavaScript',
-          kind: CompletionItemKind.Text,
-          data: 2
-        }
-      ];
-    }
-  );
-
-  // This handler resolves additional information for the item selected in
-  // the completion list.
-  connection.onCompletionResolve(
-    (item: CompletionItem): CompletionItem => {
-      if (item.data === 1) {
-        item.detail = 'TypeScript details';
-        item.documentation = 'TypeScript documentation';
-      } else if (item.data === 2) {
-        item.detail = 'JavaScript details';
-        item.documentation = 'JavaScript documentation';
-      }
-      return item;
-    }
-  );
-
   // connection.onSignatureHelp(textDocumentPosition => {
   //   const document = documents.get(textDocumentPosition.textDocument.uri);
   //   const position = textDocumentPosition.position;
@@ -231,6 +195,30 @@ export function onChange(state: State, f: (state: State) => (textDocument: TextD
   });
 }
 
+export function mkCompletion(label: string, kind: string) {
+  let k: CompletionItemKind = CompletionItemKind.Text;
+  switch (kind) {
+    case "function": k = CompletionItemKind.Function; break;
+  }
+  return { label: label, kind: k };
+}
+
+export function onCompletion(state: State, f: (state: State) => (uri: String) => (line: number) => (col: number) => () => CompletionItem[]) {
+  state.connection.onCompletion(
+    (_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
+      const items = f(state)(_textDocumentPosition.textDocument.uri)(_textDocumentPosition.position.line)(_textDocumentPosition.position.character)();
+      return items;
+    }
+  );
+
+  state.connection.onCompletionResolve(
+    (item: CompletionItem): CompletionItem => {
+      return item;
+    }
+  );
+}
+
+
 export function getText(textDocument: TextDocument): string {
   return textDocument.getText();
 }
@@ -279,6 +267,22 @@ export function pushDiagnostic(ds: Diagnostic[], d: Diagnostic)  {
 
 export function sendDiagnostics(state: State, textDocument: TextDocument, diagnostics: Diagnostic[]) {
   state.connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+}
+
+export function mkCompletionItems(): CompletionItem[] {
+  const items: CompletionItem[] = [];
+  return items;
+}
+
+export function pushCompletionItem(cs: CompletionItem[], label: string, detail: string, documentation: string)  {
+  const item: CompletionItem = 
+    {
+      label: label,
+      kind: CompletionItemKind.Text,
+      detail: detail,
+      documentation: documentation
+    };
+  cs.push(item);
 }
 
 export function showInformationMessage(state: State, message: string) {

@@ -8,6 +8,7 @@ import Text.JSGF
 
 import Server.Common
 import Server.Diagnostics
+import Server.Autocomplete
 
 %foreign "javascript:lambda:() => require('./server-ffi').load()"
 export prim__load : PrimIO State
@@ -17,6 +18,8 @@ export prim__start : State -> PrimIO ()
 export prim__onChangeConfig : State -> (State -> TextDocument -> IO ()) -> PrimIO ()
 %foreign "javascript:lambda:(state, f) => require('./server-ffi').onChange(state, f)"
 export prim__onChange : State -> (State -> TextDocument -> IO ()) -> PrimIO ()
+%foreign "javascript:lambda:(state, f) => require('./server-ffi').onCompletion(state, f)"
+prim__onCompletion : State -> (State -> String -> (line : Int) -> (col : Int) -> IO AnyPtr) -> PrimIO ()
 %foreign "javascript:lambda:(document) => require('./server-ffi').getText(document)"
 export prim__getText : TextDocument -> PrimIO String
 %foreign "javascript:lambda:(document) => require('./server-ffi').getUri(document)"
@@ -31,6 +34,10 @@ getFullUri (MkUri curUri) (MkUri relUri) = primIO (prim__getFullUri curUri relUr
 
 getTextFromUri : HasIO io => State -> Uri Absolute -> io (Maybe FileData)
 getTextFromUri state (MkUri uri) = primIO (prim__getTextFromUri Just Nothing state uri) 
+
+export
+onCompletion : HasIO io => State -> (State -> Uri Absolute -> Position -> IO CompletionItems) -> io ()
+onCompletion state f = primIO (prim__onCompletion state (\state', uri, line, col => f state' (MkUri uri) (MkPosition line col)))
 
 record ServerState where
   constructor MkServerState
@@ -59,6 +66,13 @@ validate serverState state doc = do
       d <- primIO (prim__mkDiagnostic True (show e ++ "\n" ++ message) "Parser" 0 0 0 0)
       primIO (prim__pushDiagnostic ds d)
 
+autocomplete : ServerState -> State -> Uri Absolute -> Position -> IO CompletionItems
+autocomplete serverState state uri pos = do
+  items <- primIO (prim__mkCompletionItems)
+  primIO (prim__pushCompletionItem items "Test 1" "detail 1" "doc 1")
+  primIO (prim__pushCompletionItem items "Test 2" "detail 2" "doc 2")
+  pure items
+
 main : IO ()
 main = do
   state <- primIO (prim__load)
@@ -67,6 +81,7 @@ main = do
   primIO (prim__start state)
   primIO (prim__onChangeConfig state (validate serverState))
   primIO (prim__onChange state (validate serverState))
+  onCompletion state (autocomplete serverState)
 
   -- async function validateTextDocument(textDocument: TextDocument): Promise<void> {
   --   const text = textDocument.getText();

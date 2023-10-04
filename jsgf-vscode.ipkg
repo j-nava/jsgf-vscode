@@ -24,6 +24,7 @@ modules
   = Server 
   , Server.Common
   , Server.Diagnostics
+  , Server.Autocomplete
   , Text.JSGF.Parser.Token
   , Text.JSGF.Parser.Lexer
   , Text.JSGF.Parser.Parser
