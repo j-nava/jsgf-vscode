@@ -195,14 +195,6 @@ export function onChange(state: State, f: (state: State) => (textDocument: TextD
   });
 }
 
-export function mkCompletion(label: string, kind: string) {
-  let k: CompletionItemKind = CompletionItemKind.Text;
-  switch (kind) {
-    case "function": k = CompletionItemKind.Function; break;
-  }
-  return { label: label, kind: k };
-}
-
 export function onCompletion(state: State, f: (state: State) => (uri: String) => (line: number) => (col: number) => () => CompletionItem[]) {
   state.connection.onCompletion(
     (_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
@@ -274,11 +266,15 @@ export function mkCompletionItems(): CompletionItem[] {
   return items;
 }
 
-export function pushCompletionItem(cs: CompletionItem[], label: string, detail: string, documentation: string)  {
+export function pushCompletionItem(cs: CompletionItem[], kind: string, label: string, detail: string, documentation: string)  {
+  let k: CompletionItemKind = CompletionItemKind.Text;
+  switch (kind) {
+    case "function": k = CompletionItemKind.Function; break;
+  }
   const item: CompletionItem = 
     {
       label: label,
-      kind: CompletionItemKind.Text,
+      kind: k,
       detail: detail,
       documentation: documentation
     };

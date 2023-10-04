@@ -69,8 +69,8 @@ validate serverState state doc = do
 autocomplete : ServerState -> State -> Uri Absolute -> Position -> IO CompletionItems
 autocomplete serverState state uri pos = do
   items <- primIO (prim__mkCompletionItems)
-  primIO (prim__pushCompletionItem items "Test 1" "detail 1" "doc 1")
-  primIO (prim__pushCompletionItem items "Test 2" "detail 2" "doc 2")
+  pushCompletionItem items Function "Test 1" "detail 1" "doc 1"
+  pushCompletionItem items Text "Test 2" "detail 2" "doc 2"
   pure items
 
 main : IO ()
