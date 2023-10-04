@@ -80,9 +80,9 @@ autocomplete serverState state uri pos = do
   runEitherT getParsedFile >>= \case
     Right pf => 
       let 
-        addCompletion : String -> IO ()
-        addCompletion text = pushCompletionItem items Text text "detail 2" "doc 2"
-      in traverse_ addCompletion pf.context.ruleNames
+        addCompletion : ContextRule -> IO ()
+        addCompletion rule = pushCompletionItem items Text rule.name "detail 2" "doc 2"
+      in traverse_ addCompletion pf.context.rules
     Left errors => do
       ds <- primIO prim__mkDiagnostics
       processErrors ds errors

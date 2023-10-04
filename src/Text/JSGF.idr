@@ -36,9 +36,14 @@ FileData : Type
 FileData = String
 
 public export
+record ContextRule where
+  constructor MkContextRule
+  name : String
+
+public export
 record Context where
   constructor MkContext
-  ruleNames : List String
+  rules : List ContextRule
 
 public export
 record Trees where
@@ -125,8 +130,12 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
   parseCurrentFile : ParsedFiles -> m (ParsedFile, ParsedFiles)
   parseCurrentFile pfs = do
     trees <- liftEither (jsgfParse currentFileData)
-    let pf = MkParsedFile { uri = currentUri, trees = trees, context = MkContext [] }
+    let pf = MkParsedFile { uri = currentUri, trees = trees, context = MkContext { rules = convertRule <$> trees.abstract.rules } }
     pure (pf, upsertTrees pfs pf)
+
+    where
+    convertRule : A.Rule -> ContextRule
+    convertRule rule = MkContextRule { name = fst rule.name }
 
   findAndParseDependencies : (ParsedFile, ParsedFiles) -> m (ParsedFile, ParsedFiles)
   findAndParseDependencies (pf, pfs) = do
