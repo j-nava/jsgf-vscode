@@ -43,6 +43,18 @@ record ServerState where
   constructor MkServerState
   parsedFiles  : IORef (List ParsedFile)
 
+processErrors : Diagnostics -> List1 (ParsingError (Token JSGFTokenKind)) -> IO ()
+processErrors ds errors = traverse_ processError errors
+
+  where
+  processError : ParsingError (Token JSGFTokenKind) -> IO ()
+  processError e@(Error message (Just bounds)) = do
+    d <- primIO (prim__mkDiagnostic True (show e ++ "\n" ++ message) "Parser" bounds.startLine bounds.startCol bounds.endLine bounds.endCol)
+    primIO (prim__pushDiagnostic ds d)
+  processError e@(Error message Nothing) = do
+    d <- primIO (prim__mkDiagnostic True (show e ++ "\n" ++ message) "Parser" 0 0 0 0)
+    primIO (prim__pushDiagnostic ds d)
+
 validate : ServerState -> State -> TextDocument -> IO ()
 validate serverState state doc = do
   text <- primIO (prim__getText doc)
@@ -54,23 +66,26 @@ validate serverState state doc = do
     parsedFiles = jsgfParseCurrent getFullUri (getTextFromUri state) (fromString uri, text) pfs
   runEitherT parsedFiles >>= \case
     Right newPfs => writeIORef serverState.parsedFiles newPfs
-    Left errors => traverse_ (processError ds) errors
+    Left errors => processErrors ds errors
   primIO (prim__sendDiagnostics state doc ds)
 
   where
-    processError : Diagnostics -> ParsingError (Token JSGFTokenKind) -> IO ()
-    processError ds e@(Error message (Just bounds)) = do
-      d <- primIO (prim__mkDiagnostic True (show e ++ "\n" ++ message) "Parser" bounds.startLine bounds.startCol bounds.endLine bounds.endCol)
-      primIO (prim__pushDiagnostic ds d)
-    processError ds e@(Error message Nothing) = do
-      d <- primIO (prim__mkDiagnostic True (show e ++ "\n" ++ message) "Parser" 0 0 0 0)
-      primIO (prim__pushDiagnostic ds d)
-
 autocomplete : ServerState -> State -> Uri Absolute -> Position -> IO CompletionItems
 autocomplete serverState state uri pos = do
+  pfs <- readIORef serverState.parsedFiles
   items <- primIO (prim__mkCompletionItems)
-  pushCompletionItem items Function "Test 1" "detail 1" "doc 1"
-  pushCompletionItem items Text "Test 2" "detail 2" "doc 2"
+  let
+    getParsedFile : EitherT ErrorResult IO ParsedFile
+    getParsedFile = jsgfGetParsedFile uri pfs
+  runEitherT getParsedFile >>= \case
+    Right pf => 
+      let 
+        addCompletion : String -> IO ()
+        addCompletion text = pushCompletionItem items Text text "detail 2" "doc 2"
+      in traverse_ addCompletion pf.context.ruleNames
+    Left errors => do
+      ds <- primIO prim__mkDiagnostics
+      processErrors ds errors
   pure items
 
 main : IO ()

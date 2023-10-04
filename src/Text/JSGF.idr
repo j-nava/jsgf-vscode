@@ -171,8 +171,14 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
         pure rn
       ruleNameFn False rn = pure rn
 
-jsgfResolvePosition : MonadError ErrorResult m => Uri Absolute -> Position -> ParsedFiles -> m String
-jsgfResolvePosition uri (MkPosition line col) pfs = case find (\pf => pf.uri == uri) pfs of
-  Just pf => pure "GG"
+export
+jsgfGetParsedFile : MonadError ErrorResult m => Uri Absolute -> ParsedFiles -> m ParsedFile
+jsgfGetParsedFile uri pfs = case find (\pf => pf.uri == uri) pfs of
+  Just pf => pure pf
   Nothing => throwError ((Error "File not parsed '\{show uri}'" Nothing) ::: Nil)
+
+jsgfResolvePosition : MonadError ErrorResult m => Uri Absolute -> Position -> ParsedFiles -> m String
+jsgfResolvePosition uri (MkPosition line col) pfs = do
+  pf <- jsgfGetParsedFile uri pfs
+  pure "GG"
 
