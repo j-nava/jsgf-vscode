@@ -69,7 +69,6 @@ validate serverState state doc = do
     Left errors => processErrors ds errors
   primIO (prim__sendDiagnostics state doc ds)
 
-  where
 autocomplete : ServerState -> State -> Uri Absolute -> Position -> IO CompletionItems
 autocomplete serverState state uri pos = do
   pfs <- readIORef serverState.parsedFiles
@@ -80,8 +79,11 @@ autocomplete serverState state uri pos = do
   runEitherT getParsedFile >>= \case
     Right pf => 
       let 
+        ruleDescription : ContextRule -> String
+        ruleDescription rule = "File: \{show (getRelativePath uri rule.uri)}"
+
         addCompletion : ContextRule -> IO ()
-        addCompletion rule = pushCompletionItem items Text rule.name "detail 2" "doc 2"
+        addCompletion rule = pushCompletionItem items Function rule.name rule.name (ruleDescription rule) 
       in traverse_ addCompletion pf.context.rules
     Left errors => do
       ds <- primIO prim__mkDiagnostics

@@ -39,6 +39,7 @@ public export
 record ContextRule where
   constructor MkContextRule
   name : String
+  uri  : Uri Absolute
 
 public export
 record Context where
@@ -122,28 +123,33 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
   hasUri : Uri Absolute -> ParsedFiles -> Bool
   hasUri uri pfs = isJust $ find (== uri) (.uri <$> pfs)
 
-  upsertTrees : ParsedFiles -> ParsedFile -> ParsedFiles
-  upsertTrees pfs pf = case hasUri pf.uri pfs of
-    True  => (\pf' => if pf'.uri == pf.uri then { trees := pf.trees } pf' else pf') <$> pfs
-    False => (pf :: pfs)
-
-  parseCurrentFile : ParsedFiles -> m (ParsedFile, ParsedFiles)
+  parseCurrentFile : ParsedFiles -> m (Trees, ParsedFiles)
   parseCurrentFile pfs = do
     trees <- liftEither (jsgfParse currentFileData)
-    let pf = MkParsedFile { uri = currentUri, trees = trees, context = MkContext { rules = convertRule <$> trees.abstract.rules } }
-    pure (pf, upsertTrees pfs pf)
+    pure (trees, updateTrees pfs trees)
 
     where
-    convertRule : A.Rule -> ContextRule
-    convertRule rule = MkContextRule { name = fst rule.name }
+    updateTrees : ParsedFiles -> Trees -> ParsedFiles
+    updateTrees pfs trees = case hasUri currentUri pfs of
+      True  => (\pf' => if pf'.uri == currentUri then { trees := trees } pf' else pf') <$> pfs
+      False => pfs
 
-  findAndParseDependencies : (ParsedFile, ParsedFiles) -> m (ParsedFile, ParsedFiles)
-  findAndParseDependencies (pf, pfs) = do
+  findAndParseDependencies : (Trees, ParsedFiles) -> m (ParsedFile, ParsedFiles)
+  findAndParseDependencies (trees, pfs) = do
     deps <- fetchDeps
     pfs' <- foldlM parseDepIfNeeded pfs deps
-    pure (pf, pfs')
+    let pf = MkParsedFile { uri = currentUri, trees = trees, context = MkContext { rules = convertRule <$> trees.abstract.rules } }
+    pure (pf, upsertParsedFiles pfs' pf)
 
     where
+    upsertParsedFiles : ParsedFiles -> ParsedFile -> ParsedFiles
+    upsertParsedFiles pfs pf = case hasUri pf.uri pfs of
+      True  => (\pf' => if pf'.uri == pf.uri then pf else pf') <$> pfs
+      False => (pf :: pfs)
+
+    convertRule : A.Rule -> ContextRule
+    convertRule rule = MkContextRule { name = fst rule.name, uri = currentUri }
+
     parseDepIfNeeded : ParsedFiles -> Uri Relative -> m ParsedFiles
     parseDepIfNeeded pfs uri = do
       uriA <- convertUriFn currentUri uri
@@ -158,7 +164,8 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
     fetchDeps : m (List (Uri Relative))
     fetchDeps =
 
-      execStateT [] $ A.traverseTree importFn ruleNameFn pf.trees.abstract
+      execStateT [] $ A.traverseTree importFn ruleNameFn trees.abstract
+      -- TODO: add deps recursively
 
       where
       addDir : String -> StateT (List (Uri Relative)) m ()

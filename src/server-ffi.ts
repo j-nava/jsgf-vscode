@@ -224,6 +224,10 @@ export function getFullUri(abs: string, rel: string): string {
   return path.join(dir, rel);
 }
 
+export function getRelativePath(fromPath: string, toPath: string): string {
+  return path.relative(path.dirname(fromPath), toPath);
+}
+
 export function getTextFromUri(successFn: (val: string) => object, failVal: object, state: State, path: string): object {
   // TODO: check if file is open in Editor. If so, read contents from there. If not, open from filesystem
   try {

@@ -8,7 +8,16 @@
 			"name": "Launch Client",
 			"runtimeExecutable": "${execPath}",
 			"args": ["--extensionDevelopmentPath=${workspaceRoot}"],
-			"outFiles": ["${workspaceRoot}/build/**/*.js"]
-		}
+			"outFiles": ["${workspaceRoot}/build/exec/**/*.js"],
+		},
+    {
+      "name": "Attach LanguageServer",
+      "port": 6004,
+      "request": "attach",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "type": "node"
+    }
 	]
 }

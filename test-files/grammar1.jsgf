@@ -3,7 +3,7 @@
 
 grammar mypkg.grname;
 
-import <mylib.*>;
+import <libs/mylib.*>;
 // import <abc.def.gglol2.*>; 
 
 public <rulea> = aa <ruleb>;  // faskjdlfasdkljfa
@@ -18,3 +18,4 @@ public <rulea> = aa <ruleb>;  // faskjdlfasdkljfa
 <gg>{gen = ?g} = (c* | <myrule>){gen=?g}; /* askld;fajsd l;as */
 
 // fasdklfjasdlfkasdasd a
+ 
