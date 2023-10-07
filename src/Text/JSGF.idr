@@ -117,7 +117,7 @@ jsgfParseCurrent :
   m ParsedFiles
 jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
 
-  parseCurrentFile >=> findAndParseDependencies >=> pure . snd
+  parseCurrentFile >=> findAndParseDependencies >=> mkParsedFile >=> pure . snd
 
   where
   hasUri : Uri Absolute -> ParsedFiles -> Bool
@@ -134,22 +134,58 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
       True  => (\pf' => if pf'.uri == currentUri then { trees := trees } pf' else pf') <$> pfs
       False => pfs
 
-  findAndParseDependencies : (Trees, ParsedFiles) -> m (ParsedFile, ParsedFiles)
-  findAndParseDependencies (trees, pfs) = do
-    deps <- fetchDeps
-    pfs' <- foldlM parseDepIfNeeded pfs deps
-    let pf = MkParsedFile { uri = currentUri, trees = trees, context = MkContext { rules = convertRule <$> trees.abstract.rules } }
-    pure (pf, upsertParsedFiles pfs' pf)
+  fetchDeps : A.Tree -> List (Uri Relative)
+  fetchDeps tree =
+
+    runIdentity $ execStateT [] $ A.traverseTree importFn ruleNameFn tree
 
     where
+
+    addDir : String -> StateT (List (Uri Relative)) Identity ()
+    addDir pn =
+      let
+        dirs = forget $ split (== '.') pn 
+        dir : Uri Relative
+        dir = fromString $ (joinBy "/" dirs) ++ ".jsgf"
+      in modify ((::) dir)
+
+    importFn : A.Import -> StateT (List (Uri Relative)) Identity A.Import
+    importFn imp = do
+      addDir (fst imp.packageName) 
+      pure imp
+
+    ruleNameFn : Bool -> RuleName -> StateT (List (Uri Relative)) Identity RuleName
+    ruleNameFn True rn = do
+      addDir (fst rn)
+      pure rn
+    ruleNameFn False rn = pure rn
+
+  mkParsedFile : (Trees, ParsedFiles) -> m (ParsedFile, ParsedFiles)
+  mkParsedFile (trees, pfs) = do
+    let deps = fetchDeps trees.abstract
+    let pf = MkParsedFile { uri = currentUri, trees = trees, context = MkContext { rules = convertRule <$> trees.abstract.rules } }
+    pure (pf, upsertParsedFiles pfs pf)
+
+    where
+    fetchRecDeps : List (Uri Relative) -> m (List (Uri Relative))
+    fetchRecDeps deps = ?fetchRecDeps_rhs
+
+    convertRule : A.Rule -> ContextRule
+    convertRule rule = MkContextRule { name = fst rule.name, uri = currentUri }
+
     upsertParsedFiles : ParsedFiles -> ParsedFile -> ParsedFiles
     upsertParsedFiles pfs pf = case hasUri pf.uri pfs of
       True  => (\pf' => if pf'.uri == pf.uri then pf else pf') <$> pfs
       False => (pf :: pfs)
 
-    convertRule : A.Rule -> ContextRule
-    convertRule rule = MkContextRule { name = fst rule.name, uri = currentUri }
 
+  findAndParseDependencies : (Trees, ParsedFiles) -> m (Trees, ParsedFiles)
+  findAndParseDependencies (trees, pfs) = do
+    let deps = fetchDeps trees.abstract
+    pfs' <- foldlM parseDepIfNeeded pfs deps
+    pure (trees, pfs)
+
+    where
     parseDepIfNeeded : ParsedFiles -> Uri Relative -> m ParsedFiles
     parseDepIfNeeded pfs uri = do
       uriA <- convertUriFn currentUri uri
@@ -160,32 +196,6 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
           case filedata of
             Just filedata' => jsgfParseCurrent convertUriFn readUriTextFn (uriA, filedata') pfs
             Nothing => throwError ((Error "Couldn't read file '\{show uriA}'" Nothing) ::: Nil)
-
-    fetchDeps : m (List (Uri Relative))
-    fetchDeps =
-
-      execStateT [] $ A.traverseTree importFn ruleNameFn trees.abstract
-      -- TODO: add deps recursively
-
-      where
-      addDir : String -> StateT (List (Uri Relative)) m ()
-      addDir pn =
-        let
-          dirs = forget $ split (== '.') pn 
-          dir : Uri Relative
-          dir = fromString $ (joinBy "/" dirs) ++ ".jsgf"
-        in modify ((::) dir)
-
-      importFn : A.Import -> StateT (List (Uri Relative)) m A.Import
-      importFn imp = do
-        addDir (fst imp.packageName) 
-        pure imp
-
-      ruleNameFn : Bool -> RuleName -> StateT (List (Uri Relative)) m RuleName
-      ruleNameFn True rn = do
-        addDir (fst rn)
-        pure rn
-      ruleNameFn False rn = pure rn
 
 export
 jsgfGetParsedFile : MonadError ErrorResult m => Uri Absolute -> ParsedFiles -> m ParsedFile
