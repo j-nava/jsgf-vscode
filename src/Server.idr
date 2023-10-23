@@ -63,7 +63,7 @@ validate serverState state doc = do
   uri <- primIO (prim__getUri doc)
   let
     parsedFiles : EitherT ErrorResult IO ParsedFiles
-    parsedFiles = jsgfParseCurrent getFullUri (getTextFromUri state) (fromString uri, text) pfs
+    parsedFiles = snd <$> jsgfParseCurrent getFullUri (getTextFromUri state) (fromString uri, text) pfs
   runEitherT parsedFiles >>= \case
     Right newPfs => writeIORef serverState.parsedFiles newPfs
     Left errors => processErrors ds errors

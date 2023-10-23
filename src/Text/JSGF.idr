@@ -114,10 +114,10 @@ jsgfParseCurrent :
   (Uri Absolute -> m (Maybe FileData)) -> 
   (Uri Absolute, FileData) -> 
   ParsedFiles -> 
-  m ParsedFiles
+  m (ParsedFile, ParsedFiles)
 jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
 
-  parseCurrentFile >=> findAndParseDependencies >=> mkParsedFile >=> pure . snd
+  parseCurrentFile >=> findAndParseDependencies >=> mkParsedFile >=> pure
 
   where
   hasUri : Uri Absolute -> ParsedFiles -> Bool
@@ -134,42 +134,12 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
       True  => (\pf' => if pf'.uri == currentUri then { trees := trees } pf' else pf') <$> pfs
       False => pfs
 
-  fetchDeps : A.Tree -> List (Uri Relative)
-  fetchDeps tree =
-
-    runIdentity $ execStateT [] $ A.traverseTree importFn ruleNameFn tree
-
-    where
-
-    addDir : String -> StateT (List (Uri Relative)) Identity ()
-    addDir pn =
-      let
-        dirs = forget $ split (== '.') pn 
-        dir : Uri Relative
-        dir = fromString $ (joinBy "/" dirs) ++ ".jsgf"
-      in modify ((::) dir)
-
-    importFn : A.Import -> StateT (List (Uri Relative)) Identity A.Import
-    importFn imp = do
-      addDir (fst imp.packageName) 
-      pure imp
-
-    ruleNameFn : Bool -> RuleName -> StateT (List (Uri Relative)) Identity RuleName
-    ruleNameFn True rn = do
-      addDir (fst rn)
-      pure rn
-    ruleNameFn False rn = pure rn
-
   mkParsedFile : (Trees, ParsedFiles) -> m (ParsedFile, ParsedFiles)
   mkParsedFile (trees, pfs) = do
-    let deps = fetchDeps trees.abstract
     let pf = MkParsedFile { uri = currentUri, trees = trees, context = MkContext { rules = convertRule <$> trees.abstract.rules } }
     pure (pf, upsertParsedFiles pfs pf)
 
     where
-    fetchRecDeps : List (Uri Relative) -> m (List (Uri Relative))
-    fetchRecDeps deps = ?fetchRecDeps_rhs
-
     convertRule : A.Rule -> ContextRule
     convertRule rule = MkContextRule { name = fst rule.name, uri = currentUri }
 
@@ -178,24 +148,59 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
       True  => (\pf' => if pf'.uri == pf.uri then pf else pf') <$> pfs
       False => (pf :: pfs)
 
-
   findAndParseDependencies : (Trees, ParsedFiles) -> m (Trees, ParsedFiles)
-  findAndParseDependencies (trees, pfs) = do
-    let deps = fetchDeps trees.abstract
-    pfs' <- foldlM parseDepIfNeeded pfs deps
-    pure (trees, pfs)
+  findAndParseDependencies (trees, pfs) =
+    pure (trees, !(go pfs currentUri))
 
     where
-    parseDepIfNeeded : ParsedFiles -> Uri Relative -> m ParsedFiles
+
+    fetchDeps : A.Tree -> List (Uri Relative)
+    fetchDeps tree =
+
+      runIdentity $ execStateT [] $ A.traverseTree importFn ruleNameFn tree
+
+      where
+
+      addDir : String -> StateT (List (Uri Relative)) Identity ()
+      addDir pn =
+        let
+          dirs = forget $ split (== '.') pn 
+          dir : Uri Relative
+          dir = fromString $ (joinBy "/" dirs) ++ ".jsgf"
+        in modify ((::) dir)
+
+      importFn : A.Import -> StateT (List (Uri Relative)) Identity A.Import
+      importFn imp = do
+        addDir (fst imp.packageName) 
+        pure imp
+
+      ruleNameFn : Bool -> RuleName -> StateT (List (Uri Relative)) Identity RuleName
+      ruleNameFn True rn = do
+        addDir (fst rn)
+        pure rn
+      ruleNameFn False rn = pure rn
+
+    parseDepIfNeeded : ParsedFiles -> Uri Absolute -> m (Maybe ParsedFile, ParsedFiles)
     parseDepIfNeeded pfs uri = do
-      uriA <- convertUriFn currentUri uri
-      case hasUri uriA pfs of
-        True  => pure pfs
+      case hasUri uri pfs of
+        True  => pure (Nothing, pfs)
         False => do
-          filedata <- readUriTextFn uriA
+          filedata <- readUriTextFn uri
           case filedata of
-            Just filedata' => jsgfParseCurrent convertUriFn readUriTextFn (uriA, filedata') pfs
-            Nothing => throwError ((Error "Couldn't read file '\{show uriA}'" Nothing) ::: Nil)
+            Just filedata' => do
+              (pf, pfs) <- jsgfParseCurrent convertUriFn readUriTextFn (uri, filedata') pfs
+              pure (Just pf, pfs)
+            Nothing => throwError ((Error "Couldn't read file '\{show uri}'" Nothing) ::: Nil)
+
+    go : ParsedFiles -> Uri Absolute -> m ParsedFiles
+    go pfs uri = do
+      dr <- parseDepIfNeeded pfs uri
+      case fst dr of
+        Just pf => do
+          let urisR = fetchDeps pf.trees.abstract 
+          urisA <- traverse (convertUriFn uri) urisR
+          foldlM go (snd dr) urisA
+        Nothing => pure (snd dr)
 
 export
 jsgfGetParsedFile : MonadError ErrorResult m => Uri Absolute -> ParsedFiles -> m ParsedFile
@@ -206,5 +211,5 @@ jsgfGetParsedFile uri pfs = case find (\pf => pf.uri == uri) pfs of
 jsgfResolvePosition : MonadError ErrorResult m => Uri Absolute -> Position -> ParsedFiles -> m String
 jsgfResolvePosition uri (MkPosition line col) pfs = do
   pf <- jsgfGetParsedFile uri pfs
-  pure "GG"
+  pure "GG" -- TODO
 
