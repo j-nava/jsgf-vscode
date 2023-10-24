@@ -57,13 +57,12 @@ processErrors ds errors = traverse_ processError errors
 
 validate : ServerState -> State -> TextDocument -> IO ()
 validate serverState state doc = do
-  text <- primIO (prim__getText doc)
   ds <- primIO prim__mkDiagnostics
   pfs <- readIORef serverState.parsedFiles
   uri <- primIO (prim__getUri doc)
   let
     parsedFiles : EitherT ErrorResult IO ParsedFiles
-    parsedFiles = snd <$> jsgfParseCurrent getFullUri (getTextFromUri state) (fromString uri, text) pfs
+    parsedFiles = jsgfParseCurrent getFullUri (getTextFromUri state) (fromString uri) pfs
   runEitherT parsedFiles >>= \case
     Right newPfs => writeIORef serverState.parsedFiles newPfs
     Left errors => processErrors ds errors
@@ -84,7 +83,7 @@ autocomplete serverState state uri pos = do
 
         addCompletion : ContextRule -> IO ()
         addCompletion rule = pushCompletionItem items Function rule.name rule.name (ruleDescription rule) 
-      in traverse_ addCompletion pf.context.rules
+      in for_ pf.context $ \context => traverse_ addCompletion context.rules
     Left errors => do
       ds <- primIO prim__mkDiagnostics
       processErrors ds errors
