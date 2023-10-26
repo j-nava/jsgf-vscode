@@ -57,12 +57,13 @@ processErrors ds errors = traverse_ processError errors
 
 validate : ServerState -> State -> TextDocument -> IO ()
 validate serverState state doc = do
+  text <- primIO (prim__getText doc)
   ds <- primIO prim__mkDiagnostics
   pfs <- readIORef serverState.parsedFiles
   uri <- primIO (prim__getUri doc)
   let
     parsedFiles : EitherT ErrorResult IO ParsedFiles
-    parsedFiles = jsgfParseCurrent getFullUri (getTextFromUri state) (fromString uri) pfs
+    parsedFiles = jsgfParseCurrent getFullUri (getTextFromUri state) ((fromString uri), text) pfs
   runEitherT parsedFiles >>= \case
     Right newPfs => writeIORef serverState.parsedFiles newPfs
     Left errors => processErrors ds errors

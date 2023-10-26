@@ -110,12 +110,12 @@ jsgfParse s = do
 export
 jsgfParseCurrent : 
   MonadError ErrorResult m => 
-  ((currentFileLocation : Uri Absolute) -> (locationRelatedToCurrentFile : Uri Relative) -> m (Uri Absolute)) -> 
-  (Uri Absolute -> m (Maybe FileData)) -> 
-  Uri Absolute -> 
+  (convertUriFn : ((currentFileLocation : Uri Absolute) -> (locationRelatedToCurrentFile : Uri Relative) -> m (Uri Absolute))) -> 
+  (readUriTextFn : (Uri Absolute -> m (Maybe FileData))) -> 
+  (currentFileInfo : (Uri Absolute, FileData)) -> 
   ParsedFiles -> 
   m ParsedFiles
-jsgfParseCurrent convertUriFn readUriTextFn currentUri =
+jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
 
   parseWithDependencies >=> buildAllContext
 
@@ -123,17 +123,10 @@ jsgfParseCurrent convertUriFn readUriTextFn currentUri =
   hasUri : Uri Absolute -> ParsedFiles -> Bool
   hasUri uri pfs = isJust $ find (== uri) (.uri <$> pfs)
 
-  parseFile : ParsedFiles -> (force : Bool) -> Uri Absolute -> m (Maybe ParsedFile)
-  parseFile pfs force uri = do
-    case hasUri uri pfs && (not force) of
-      True  => pure Nothing
-      False => do
-        filedata <- readUriTextFn uri
-        case filedata of
-          Just filedata' => do
-            trees <- liftEither (jsgfParse filedata')
-            pure (Just $ MkParsedFile { uri = uri, trees = trees, context = Nothing })
-          Nothing => throwError ((Error "Couldn't read file '\{show uri}'" Nothing) ::: Nil)
+  upsertParsedFiles : ParsedFiles -> ParsedFile -> ParsedFiles
+  upsertParsedFiles pfs pf = case hasUri pf.uri pfs of
+    True  => (\pf' => if pf'.uri == pf.uri then pf else pf') <$> pfs
+    False => (pf :: pfs)
 
   buildContext : (ParsedFile, ParsedFiles) -> m (ParsedFile, ParsedFiles)
   buildContext (pfnc, pfs) = do
@@ -144,17 +137,12 @@ jsgfParseCurrent convertUriFn readUriTextFn currentUri =
     convertRule : A.Rule -> ContextRule
     convertRule rule = MkContextRule { name = fst rule.name, uri = currentUri }
 
-    upsertParsedFiles : ParsedFiles -> ParsedFile -> ParsedFiles
-    upsertParsedFiles pfs pf = case hasUri pf.uri pfs of
-      True  => (\pf' => if pf'.uri == pf.uri then pf else pf') <$> pfs
-      False => (pf :: pfs)
-
   buildAllContext : ParsedFiles -> m ParsedFiles
-  buildAllContext pfs = pure pfs
+  buildAllContext pfs = pure pfs -- TODO: rebuild all context = Nothing + rules that depend on currentUri
 
   parseWithDependencies : ParsedFiles -> m ParsedFiles
   parseWithDependencies pfs = do
-    execStateT pfs (go currentUri)
+    execStateT pfs (go (Just currentFileData) currentUri)
 
     where
 
@@ -184,14 +172,24 @@ jsgfParseCurrent convertUriFn readUriTextFn currentUri =
         pure rn
       ruleNameFn False rn = pure rn
 
-    go : Uri Absolute -> StateT ParsedFiles m ()
-    go uri = do
-      lift (parseFile pfs False uri) >>= traverse_ (\pf => do
-          modify ((::) pf)
-          let urisR = fetchDeps pf.trees.abstract 
-          urisA <- lift $ traverse (convertUriFn uri) urisR
-          traverse_ go urisA
-        )
+    go : Maybe FileData -> Uri Absolute -> StateT ParsedFiles m ()
+    go filedata uri = do
+      pfs <- get
+      let isParsed = hasUri uri pfs 
+      filedata' <- case filedata of
+        Just fd => pure fd
+        Nothing => do
+          lift (readUriTextFn uri) >>= \case
+            Just fd => pure fd
+            Nothing => throwError ((Error "Couldn't read file '\{show uri}'" Nothing) ::: Nil)
+
+      when (isJust filedata || not isParsed) $ do
+        trees <- liftEither (jsgfParse filedata')
+        let pf = MkParsedFile { uri = uri, trees = trees, context = Nothing }
+        put (upsertParsedFiles pfs pf)
+        let urisR = fetchDeps pf.trees.abstract 
+        urisA <- lift $ traverse (convertUriFn uri) urisR
+        traverse_ (go Nothing) urisA
 
 export
 jsgfGetParsedFile : MonadError ErrorResult m => Uri Absolute -> ParsedFiles -> m ParsedFile
