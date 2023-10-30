@@ -75,7 +75,7 @@ autocomplete serverState state uri pos = do
   items <- primIO (prim__mkCompletionItems)
   let
     getParsedFile : EitherT ErrorResult IO ParsedFile
-    getParsedFile = jsgfGetParsedFile uri pfs
+    getParsedFile = jsgfGetParsedFile pfs uri
   runEitherT getParsedFile >>= \case
     Right pf => 
       let 

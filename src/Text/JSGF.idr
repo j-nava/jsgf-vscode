@@ -163,21 +163,23 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
   buildContext : ParsedFiles -> ParsedFile -> m ParsedFile
   buildContext pfs pf with (pf.context) 
     buildContext _ pf | Just context = pure pf 
-    buildContext pfs pf | Nothing =
-      go pfs pf
+    buildContext pfs pf | Nothing = do
+      rules <- findRules pfs pf
+      pure $ MkParsedFile { uri = pf.uri, trees = pf.trees, context = Just $ MkContext { rules = rules } }
 
       where
-      convertRule : A.Rule -> ContextRule
-      convertRule rule = MkContextRule { name = fst rule.name, uri = currentUri }
+      convertRule : Uri Absolute -> A.Rule -> ContextRule
+      convertRule uri rule = MkContextRule { name = fst rule.name, uri = uri }
 
-      go : ParsedFiles -> ParsedFile -> m ParsedFile
-      go pfs pf = do
-        -- TODO: return parsedfile with context. context needs to include rules from dependencies recursively
+      findRules : ParsedFiles -> ParsedFile -> m (List ContextRule)
+      findRules pfs pf = do
+        let pfRules = convertRule pf.uri <$> pf.trees.abstract.rules
         let urisR = fetchDeps pf.trees.abstract
         urisA <- traverse (convertUriFn pf.uri) urisR
         deps <- traverse (jsgfGetParsedFile pfs) urisA
+        depRules <- foldlM (\a, pf' => findRules pfs pf' <&> ((++) a)) [] deps
         
-        pure $ MkParsedFile { uri = pf.uri, trees = pf.trees, context = Just $ MkContext { rules = convertRule <$> pf.trees.abstract.rules } }
+        pure $ Prelude.Types.List.(++) pfRules depRules
 
   buildAllContext : ParsedFiles -> m ParsedFiles
   buildAllContext pfs = 
