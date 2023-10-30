@@ -40,6 +40,9 @@ record ContextRule where
   constructor MkContextRule
   name : String
   uri  : Uri Absolute
+public export
+Eq ContextRule where
+  (==) cr1 cr2 = cr1.name == cr2.name && cr1.uri == cr2.uri
 
 public export
 record Context where
@@ -177,9 +180,9 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
         let urisR = fetchDeps pf.trees.abstract
         urisA <- traverse (convertUriFn pf.uri) urisR
         deps <- traverse (jsgfGetParsedFile pfs) urisA
-        depRules <- foldlM (\a, pf' => findRules pfs pf' <&> ((++) a)) [] deps
+        depRules <- foldlM (\a, pf' => findRules pfs pf' <&> (\rs => a ++ rs)) [] deps
         
-        pure $ Prelude.Types.List.(++) pfRules depRules
+        pure . nub $ Prelude.Types.List.(++) pfRules depRules
 
   buildAllContext : ParsedFiles -> m ParsedFiles
   buildAllContext pfs = 

@@ -4,6 +4,7 @@
 grammar mypkg.grname;
 
 import <libs/mylib.*>;
+import <libs/lib2.*>;
 // import <abc.def.gglol2.*>; 
 
 public <rulea> = aa <ruleb>;  // faskjdlfasdkljfa
@@ -19,4 +20,3 @@ public <rulea> = aa <ruleb>;  // faskjdlfasdkljfa
 
 // fasdklfjasdlfkasdasd a
  
-
