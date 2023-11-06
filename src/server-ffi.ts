@@ -280,7 +280,8 @@ export function pushCompletionItem(cs: CompletionItem[], kind: string, label: st
       label: label,
       kind: k,
       detail: detail,
-      documentation: documentation
+      documentation: documentation,
+      deprecated: isShadow
     };
   cs.push(item);
 }

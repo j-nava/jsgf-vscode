@@ -16,9 +16,9 @@ Show CompletionKind where
 %foreign "javascript:lambda:() => require('./server-ffi').mkCompletionItems()"
 export prim__mkCompletionItems : PrimIO CompletionItems
 
-%foreign "javascript:lambda:(cs, kind, label, detail, documentation, isShadow) => require('./server-ffi').pushCompletionItem(cs, kind, label, detail, documentation, isShadow)"
-prim__pushCompletionItem : CompletionItems -> String -> String -> String -> String -> Bool -> PrimIO ()
+%foreign "javascript:lambda:(cs, kind, label, detail, documentation, isShadow) => require('./server-ffi').pushCompletionItem(cs, kind, label, detail, documentation, (isShadow === 1 ? true : false))"
+prim__pushCompletionItem : CompletionItems -> String -> String -> String -> String -> Int -> PrimIO ()
 
 export
 pushCompletionItem : HasIO io => CompletionItems -> CompletionKind -> (label : String) -> (detail : String) -> (description : String) -> (isShadow : Bool) -> io ()
-pushCompletionItem cs kind label detail description isShadow = primIO (prim__pushCompletionItem cs (show kind) label detail description isShadow)
+pushCompletionItem cs kind label detail description isShadow = primIO (prim__pushCompletionItem cs (show kind) label detail description (if isShadow then 1 else 0))
