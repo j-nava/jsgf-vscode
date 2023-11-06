@@ -2,6 +2,6 @@
 
 grammar mylib2;
 
-public <lib2rule1bb> = a | b | c;
+public <lib2rule1c> = a | b | c;
 
 public <rulea> = dd | ee;

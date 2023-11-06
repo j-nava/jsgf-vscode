@@ -16,7 +16,8 @@ public <rulea> = aa <ruleb>;  // faskjdlfasdkljfa
   [/gg/ b | /3/ gg ]) |
   c;
 
-<gg>{gen = ?g} = (c* | <myrule>){gen=?g}; /* askld;fajsd l;as */
+<gg>{gen = ?g} = (c* | <myrule>){gen=?g} | <ruleaaa>; /* askld;fajsd l;as */
+<rulea> = c | d;
 
 // fasdklfjasdlfkasdasd a
  

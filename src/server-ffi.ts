@@ -270,7 +270,7 @@ export function mkCompletionItems(): CompletionItem[] {
   return items;
 }
 
-export function pushCompletionItem(cs: CompletionItem[], kind: string, label: string, detail: string, documentation: string)  {
+export function pushCompletionItem(cs: CompletionItem[], kind: string, label: string, detail: string, documentation: string, isShadow: boolean)  {
   let k: CompletionItemKind = CompletionItemKind.Text;
   switch (kind) {
     case "function": k = CompletionItemKind.Function; break;

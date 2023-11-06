@@ -83,8 +83,8 @@ autocomplete serverState state uri pos = do
         ruleDescription rule = "File: \{show (getRelativePath uri rule.uri)}"
 
         addCompletion : ContextRule -> IO ()
-        addCompletion rule = pushCompletionItem items Function rule.name rule.name (ruleDescription rule) 
-      in for_ pf.context $ \context => traverse_ addCompletion context.rules
+        addCompletion rule = pushCompletionItem items Function rule.name rule.name (ruleDescription rule) rule.isShadow
+      in for_ pf.context $ \context => traverse_ addCompletion (filter (\r => not r.isDup) context.rules)
     Left errors => do
       ds <- primIO prim__mkDiagnostics
       processErrors ds errors

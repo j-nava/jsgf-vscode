@@ -38,11 +38,15 @@ FileData = String
 public export
 record ContextRule where
   constructor MkContextRule
-  name : String
-  uri  : Uri Absolute
+  name       : String
+  uri        : Uri Absolute
+  importedBy : Uri Absolute
+  isDup      : Bool
+  isShadow   : Bool
+
 public export
 Eq ContextRule where
-  (==) cr1 cr2 = cr1.name == cr2.name && cr1.uri == cr2.uri
+  (==) cr1 cr2 = cr1.name == cr2.name && cr1.uri == cr2.uri && cr1.importedBy == cr2.importedBy
 
 public export
 record Context where
@@ -163,31 +167,54 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
       pure rn
     ruleNameFn False rn = pure rn
 
+  invalidateContext : Uri Absolute -> ParsedFile -> ParsedFile
+  invalidateContext uri pf with (pf.context)
+    invalidateContext uri pf | Just context =
+      case find (\rule => rule.uri == uri) context.rules of
+        Just _ => { context := Nothing } pf
+        Nothing => pf 
+    invalidateContext _ pf | Nothing = pf
+
   buildContext : ParsedFiles -> ParsedFile -> m ParsedFile
   buildContext pfs pf with (pf.context) 
     buildContext _ pf | Just context = pure pf 
     buildContext pfs pf | Nothing = do
-      rules <- findRules pfs pf
-      pure $ MkParsedFile { uri = pf.uri, trees = pf.trees, context = Just $ MkContext { rules = rules } }
+      rules <- findRules pfs pf.uri pf
+      let rules' = runIdentity $ evalStateT [] $ traverse validateRule rules
+      pure $ MkParsedFile { uri = pf.uri, trees = pf.trees, context = Just $ MkContext { rules = rules' } }
 
       where
-      convertRule : Uri Absolute -> A.Rule -> ContextRule
-      convertRule uri rule = MkContextRule { name = fst rule.name, uri = uri }
+      validateRule : ContextRule -> StateT (List ContextRule) Identity ContextRule
+      validateRule rule = do
+        rules <- get
+        let isDupl = isJust $ find ((==) rule) rules
+        let isShadow = isJust $ find (\r => r.name == rule.name && r.uri /= rule.uri) rules
+        if isDupl
+          then pure $ { isDup := True } rule
+          else if isShadow
+            then pure $ { isShadow := True } rule
+            else do
+              put $ rules `snoc` rule
+              pure rule
 
-      findRules : ParsedFiles -> ParsedFile -> m (List ContextRule)
-      findRules pfs pf = do
-        let pfRules = convertRule pf.uri <$> pf.trees.abstract.rules
+      convertRule : Uri Absolute -> Uri Absolute -> A.Rule -> ContextRule
+      convertRule importedBy uri rule = MkContextRule { name = fst rule.name, uri = uri, importedBy = importedBy, isDup = False, isShadow = False }
+
+      findRules : ParsedFiles -> Uri Absolute -> ParsedFile -> m (List ContextRule)
+      findRules pfs importedBy pf = do
+        let pfRules = convertRule importedBy pf.uri <$> pf.trees.abstract.rules
         let urisR = fetchDeps pf.trees.abstract
         urisA <- traverse (convertUriFn pf.uri) urisR
         deps <- traverse (jsgfGetParsedFile pfs) urisA
-        depRules <- foldlM (\a, pf' => findRules pfs pf' <&> (\rs => a ++ rs)) [] deps
+        depRules <- foldlM (\a, pf' => findRules pfs pf.uri pf' <&> (\rs => a ++ rs)) [] deps
         
-        pure . nub $ Prelude.Types.List.(++) pfRules depRules
+        pure . nubBy (\r1, r2 => r1.name == r2.name && r1.uri == r2.uri && r1.importedBy /= r2.importedBy) $ pfRules `Prelude.Types.List.(++)` depRules
 
   buildAllContext : ParsedFiles -> m ParsedFiles
-  buildAllContext pfs = 
-    -- TODO: invalidateDeps -- go through all files that depend on currentUri recursively and set their context to Nothing
-    traverse (buildContext pfs) pfs
+  buildAllContext pfs = do
+    -- Important: for performance reasons, this function should be kept idempotent
+    let pfs' = invalidateContext currentUri <$> pfs
+    traverse (buildContext pfs') pfs'
 
   parseWithDependencies : ParsedFiles -> m ParsedFiles
   parseWithDependencies pfs = do
