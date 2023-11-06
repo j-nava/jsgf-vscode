@@ -5,3 +5,7 @@ grammar mylib2;
 public <lib2rule1c> = a | b | c;
 
 public <rulea> = dd | ee;
+
+public <ruleb> = dd | ee;
+
+<rulec> = ff | a;

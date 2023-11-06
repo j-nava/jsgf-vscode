@@ -41,6 +41,9 @@ record ContextRule where
   name       : String
   uri        : Uri Absolute
   importedBy : Uri Absolute
+  isPublic   : Bool
+  position   : Bounds
+
   isDup      : Bool
   isShadow   : Bool
 
@@ -198,7 +201,7 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
               pure rule
 
       convertRule : Uri Absolute -> Uri Absolute -> A.Rule -> ContextRule
-      convertRule importedBy uri rule = MkContextRule { name = fst rule.name, uri = uri, importedBy = importedBy, isDup = False, isShadow = False }
+      convertRule importedBy uri rule = MkContextRule { name = fst rule.name, uri = uri, importedBy = importedBy, isPublic = rule.isPublic, position = (snd rule.name).position, isDup = False, isShadow = False }
 
       findRules : ParsedFiles -> Uri Absolute -> ParsedFile -> m (List ContextRule)
       findRules pfs importedBy pf = do

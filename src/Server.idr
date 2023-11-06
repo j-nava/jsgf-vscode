@@ -79,11 +79,14 @@ autocomplete serverState state uri pos = do
   runEitherT getParsedFile >>= \case
     Right pf => 
       let 
+        isPrivate : ContextRule -> Bool
+        isPrivate rule = not rule.isPublic && rule.uri /= uri
+
         ruleDescription : ContextRule -> String
-        ruleDescription rule = "File: \{show (getRelativePath uri rule.uri)}"
+        ruleDescription rule = "File: \{show (getRelativePath uri rule.uri)}" ++ (if isPrivate rule then "\nRule is private" else "") ++ (if rule.isShadow then "\nRule is shadowed" else "")
 
         addCompletion : ContextRule -> IO ()
-        addCompletion rule = pushCompletionItem items Function rule.name rule.name (ruleDescription rule) rule.isShadow
+        addCompletion rule = pushCompletionItem items Function rule.name rule.name (ruleDescription rule) (rule.isShadow || isPrivate rule)
       in for_ pf.context $ \context => traverse_ addCompletion (filter (\r => not r.isDup) context.rules)
     Left errors => do
       ds <- primIO prim__mkDiagnostics

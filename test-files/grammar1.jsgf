@@ -18,6 +18,7 @@ public <rulea> = aa <ruleb>;  // faskjdlfasdkljfa
 
 <gg>{gen = ?g} = (c* | <myrule>){gen=?g} | <ruleaaa>; /* askld;fajsd l;as */
 <rulea> = c | d;
+<test> = (gafkda | fsdf);
 
 // fasdklfjasdlfkasdasd a
  
