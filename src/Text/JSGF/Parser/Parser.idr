@@ -130,7 +130,7 @@ mutual
   ruleExpansionRuleRef : Grammar state JSGFToken True RuleExpansion
   ruleExpansionRuleRef = do
     weight       <- optional weight
-    ruleName     <- between' [JSGFAngBracket] matchText
+    ruleName     <- between' [JSGFAngBracket] matchTextDot
     pure (RuleRef weight ruleName)
 
   ruleExpansionToken : Grammar state JSGFToken True RuleExpansion

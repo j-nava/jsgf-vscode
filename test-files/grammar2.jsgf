@@ -1,0 +1,8 @@
+#JSGF V1.0 abc;
+
+grammar mypkg.grammar2;
+
+import <grammar1.*>;
+
+public <rr> = a | b;
+

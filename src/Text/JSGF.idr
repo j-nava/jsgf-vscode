@@ -66,7 +66,7 @@ public export
 record ParsedFile where
   constructor MkParsedFile
   uri     : Uri Absolute
-  trees   : Trees
+  result  : Result Trees
   context : Maybe Context
 
 public export
@@ -133,7 +133,7 @@ jsgfParseCurrent :
   m ParsedFiles
 jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
 
-  parseWithDependencies >=> buildAllContext -->=> validateContext
+  parseWithDependencies >=> buildAllContext >=> generateErrors -->=> validateContext
 
   where
   hasUri : Uri Absolute -> ParsedFiles -> Bool
@@ -184,7 +184,7 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
     buildContext pfs pf | Nothing = do
       rules <- findRules pfs pf.uri pf
       let rules' = runIdentity $ evalStateT [] $ traverse validateRule rules
-      pure $ MkParsedFile { uri = pf.uri, trees = pf.trees, context = Just $ MkContext { rules = rules' } }
+      pure $ MkParsedFile { uri = pf.uri, result = pf.result, context = Just $ MkContext { rules = rules' } }
 
       where
       validateRule : ContextRule -> StateT (List ContextRule) Identity ContextRule
@@ -204,14 +204,31 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
       convertRule importedBy uri rule = MkContextRule { name = fst rule.name, uri = uri, importedBy = importedBy, isPublic = rule.isPublic, position = (snd rule.name).position, isDup = False, isShadow = False }
 
       findRules : ParsedFiles -> Uri Absolute -> ParsedFile -> m (List ContextRule)
-      findRules pfs importedBy pf = do
-        let pfRules = convertRule importedBy pf.uri <$> pf.trees.abstract.rules
-        let urisR = fetchDeps pf.trees.abstract
-        urisA <- traverse (convertUriFn pf.uri) urisR
-        deps <- traverse (jsgfGetParsedFile pfs) urisA
-        depRules <- foldlM (\a, pf' => findRules pfs pf.uri pf' <&> (\rs => a ++ rs)) [] deps
-        
-        pure . nubBy (\r1, r2 => r1.name == r2.name && r1.uri == r2.uri && r1.importedBy /= r2.importedBy) $ pfRules `Prelude.Types.List.(++)` depRules
+      findRules pfs importedBy pf = case pf.result of
+        Left e => pure []
+        Right trees => do
+          let pfRules = convertRule importedBy pf.uri <$> trees.abstract.rules
+          let urisR = fetchDeps trees.abstract
+          urisA <- traverse (convertUriFn pf.uri) urisR
+          deps <- traverse (jsgfGetParsedFile pfs) urisA
+          depRules <- foldlM (\a, pf' => findRules pfs pf.uri pf' <&> (\rs => a ++ rs)) [] deps
+          pure . nubBy (\r1, r2 => r1.name == r2.name && r1.uri == r2.uri && r1.importedBy /= r2.importedBy) $ pfRules `Prelude.Types.List.(++)` depRules
+
+  generateErrors : ParsedFiles -> m ParsedFiles
+  generateErrors pfs = do
+    (errors, pfs') <- runStateT [] $ traverse go pfs
+    case errors of
+      [] => pure pfs'
+      (x::xs) => throwError (x:::xs)
+
+    where
+    go : ParsedFile -> StateT (List (ParsingError JSGFToken)) m ParsedFile
+    go pf = do
+      case pf.result of
+        Left errors => do
+          modify $ (++) (forget errors)
+          pure pf
+        Right _ => pure pf
 
   buildAllContext : ParsedFiles -> m ParsedFiles
   buildAllContext pfs = do
@@ -237,12 +254,16 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
             Nothing => throwError ((Error "Couldn't read file '\{show uri}'" Nothing) ::: Nil)
 
       when (isJust filedata || not isParsed) $ do
-        trees <- liftEither (jsgfParse filedata')
-        let pf = MkParsedFile { uri = uri, trees = trees, context = Nothing }
-        put (upsertParsedFiles pfs pf)
-        let urisR = fetchDeps pf.trees.abstract 
-        urisA <- lift $ traverse (convertUriFn uri) urisR
-        traverse_ (go Nothing) urisA
+        case jsgfParse filedata' of
+          Left e => do
+            let pf = MkParsedFile { uri = uri, result = Left e, context = Nothing }
+            put (upsertParsedFiles pfs pf)
+          Right trees => do
+            let pf = MkParsedFile { uri = uri, result = Right trees, context = Nothing }
+            put (upsertParsedFiles pfs pf)
+            let urisR = fetchDeps trees.abstract 
+            urisA <- lift $ traverse (convertUriFn uri) urisR
+            traverse_ (go Nothing) urisA
 
   validateContext : ParsedFile -> m ParsedFile
   validateContext = pure . id -- TODO: 1. validate undeclared rules; 2. validate unused rules (warning); 3. validate private rules (diff error msg)
