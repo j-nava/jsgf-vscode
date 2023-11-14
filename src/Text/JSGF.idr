@@ -133,7 +133,7 @@ jsgfParseCurrent :
   m ParsedFiles
 jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
 
-  parseWithDependencies >=> buildAllContext
+  parseWithDependencies >=> buildAllContext -->=> validateContext
 
   where
   hasUri : Uri Absolute -> ParsedFiles -> Bool
@@ -243,6 +243,9 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
         let urisR = fetchDeps pf.trees.abstract 
         urisA <- lift $ traverse (convertUriFn uri) urisR
         traverse_ (go Nothing) urisA
+
+  validateContext : ParsedFile -> m ParsedFile
+  validateContext = pure . id -- TODO: 1. validate undeclared rules; 2. validate unused rules (warning); 3. validate private rules (diff error msg)
 
 jsgfResolvePosition : MonadError ErrorResult m => Uri Absolute -> Position -> ParsedFiles -> m String
 jsgfResolvePosition uri (MkPosition line col) pfs = do

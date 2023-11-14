@@ -4,6 +4,7 @@
 node_modules/**
 build/**
 src/**
+test-files/**
 *.ipkg
 tsconfig.json
 Makefile
