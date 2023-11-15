@@ -6,7 +6,7 @@ import <libs/mylib.*>;
 import <libs/lib2.*>;
 // import <abc.def.gglol2.*>; 
 
-public <rulea> = aa <ruleb>;  // faskjdlfasdkljfa
+public <rulea$1> = aa <ruleb>;  // faskjdlfasdkljfa
 
 /* fakl;sd;alsjdflakj */
 
@@ -15,7 +15,7 @@ public <rulea> = aa <ruleb>;  // faskjdlfasdkljfa
   [/gg/ b | /3/ gg ]) |
   c;
 
-<gg>{gen = ?g} = (c* | <myrule>){gen=?g} | <ruleaaa> | <lib.hello.rule3; /* askld;fajsd l;as */
+<gg>{gen = ?g} = (c* | <myrule.ab$123>){gen=?g} | <ruleaaa> | <lib.hello.rule3; /* askld;fajsd l;as */
 <rulea> = c | d;
 <test> = (gafkda | fsdf);
 

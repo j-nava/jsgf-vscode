@@ -48,6 +48,12 @@ record ContextRule where
   isShadow   : Bool
 
 public export
+record WithOrigin (a : Type) where
+  constructor MkWithOrigin
+  position : Maybe Bounds 
+  value    : a
+
+public export
 Eq ContextRule where
   (==) cr1 cr2 = cr1.name == cr2.name && cr1.uri == cr2.uri && cr1.importedBy == cr2.importedBy
 
@@ -144,29 +150,29 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
     True  => (\pf' => if pf'.uri == pf.uri then pf else pf') <$> pfs
     False => (pf :: pfs)
 
-  fetchDeps : A.Tree -> List (Uri Relative)
+  fetchDeps : A.Tree -> List (WithOrigin (Uri Relative))
   fetchDeps tree =
 
     runIdentity $ execStateT [] $ A.traverseTree importFn ruleNameFn tree
 
     where
 
-    addDir : String -> StateT (List (Uri Relative)) Identity ()
+    addDir : A.TType String -> StateT (List (WithOrigin (Uri Relative))) Identity ()
     addDir pn =
       let
-        dirs = forget $ split (== '.') pn 
+        dirs = forget $ split (== '.') (fst pn)
         dir : Uri Relative
         dir = fromString $ (joinBy "/" dirs) ++ ".jsgf"
-      in modify ((::) dir)
+      in modify ((::) (MkWithOrigin { value = dir, position = Just (snd pn).position }))
 
-    importFn : A.Import -> StateT (List (Uri Relative)) Identity A.Import
+    importFn : A.Import -> StateT (List (WithOrigin (Uri Relative))) Identity A.Import
     importFn imp = do
-      addDir (fst imp.packageName) 
+      addDir imp.packageName
       pure imp
 
-    ruleNameFn : Bool -> RuleName -> StateT (List (Uri Relative)) Identity RuleName
+    ruleNameFn : Bool -> RuleName -> StateT (List (WithOrigin (Uri Relative))) Identity RuleName
     ruleNameFn True rn = do
-      addDir (fst rn)
+      addDir rn
       pure rn
     ruleNameFn False rn = pure rn
 
@@ -208,7 +214,7 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
         Left e => pure []
         Right trees => do
           let pfRules = convertRule importedBy pf.uri <$> trees.abstract.rules
-          let urisR = fetchDeps trees.abstract
+          let urisR = .value <$> fetchDeps trees.abstract
           urisA <- traverse (convertUriFn pf.uri) urisR
           deps <- traverse (jsgfGetParsedFile pfs) urisA
           depRules <- foldlM (\a, pf' => findRules pfs pf.uri pf' <&> (\rs => a ++ rs)) [] deps
@@ -238,31 +244,31 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
 
   parseWithDependencies : ParsedFiles -> m ParsedFiles
   parseWithDependencies pfs = do
-    execStateT pfs (go (Just currentFileData) currentUri)
+    execStateT pfs (go (Just currentFileData) (MkWithOrigin { value = currentUri, position = Nothing }))
 
     where
 
-    go : Maybe FileData -> Uri Absolute -> StateT ParsedFiles m ()
+    go : Maybe FileData -> WithOrigin (Uri Absolute) -> StateT ParsedFiles m ()
     go filedata uri = do
       pfs <- get
-      let isParsed = hasUri uri pfs 
+      let isParsed = hasUri uri.value pfs 
       filedata' <- case filedata of
         Just fd => pure fd
         Nothing => do
-          lift (readUriTextFn uri) >>= \case
+          lift (readUriTextFn uri.value) >>= \case
             Just fd => pure fd
-            Nothing => throwError ((Error "Couldn't read file '\{show uri}'" Nothing) ::: Nil)
+            Nothing => throwError ((Error "Couldn't read file '\{show uri.value}'" Nothing) ::: Nil)
 
       when (isJust filedata || not isParsed) $ do
         case jsgfParse filedata' of
           Left e => do
-            let pf = MkParsedFile { uri = uri, result = Left e, context = Nothing }
+            let pf = MkParsedFile { uri = uri.value, result = Left e, context = Nothing }
             put (upsertParsedFiles pfs pf)
           Right trees => do
-            let pf = MkParsedFile { uri = uri, result = Right trees, context = Nothing }
+            let pf = MkParsedFile { uri = uri.value, result = Right trees, context = Nothing }
             put (upsertParsedFiles pfs pf)
             let urisR = fetchDeps trees.abstract 
-            urisA <- lift $ traverse (convertUriFn uri) urisR
+            urisA <- lift $ traverse (\u => convertUriFn uri.value u.value >>= (\u' => pure $ MkWithOrigin { value = u', position = u.position })) urisR
             traverse_ (go Nothing) urisA
 
   validateContext : ParsedFile -> m ParsedFile

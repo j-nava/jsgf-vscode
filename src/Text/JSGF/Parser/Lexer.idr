@@ -4,7 +4,7 @@ import Text.Lexer
 import Text.JSGF.Parser.Token
 
 text : Lexer
-text = someUntil (oneOf "[]<>{}().#;*" <|> spaces) any -- pred (> chr 160) <|> alphaNum
+text = someUntil (oneOf "[]<>{}().;*" <|> spaces) any -- pred (> chr 160) <|> alphaNum
 
 comment : Lexer
 comment = is '/' <+> is '/' <+> many (isNot '\n')
