@@ -139,7 +139,7 @@ jsgfParseCurrent :
   m ParsedFiles
 jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
 
-  parseWithDependencies >=> buildAllContext >=> generateErrors -->=> validateContext
+  parseWithDependencies >=> buildAllContext -- >=> generateErrors -->=> validateContext
 
   where
   hasUri : Uri Absolute -> ParsedFiles -> Bool
@@ -175,6 +175,11 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
       addDir rn
       pure rn
     ruleNameFn False rn = pure rn
+
+  fetchDepsA : Uri Absolute -> A.Tree -> m (List (WithOrigin (Uri Absolute)))
+  fetchDepsA baseUri tree =
+    let urisR = fetchDeps tree
+    in traverse (\u => convertUriFn baseUri u.value >>= (\u' => pure $ MkWithOrigin { value = u', position = u.position })) urisR
 
   invalidateContext : Uri Absolute -> ParsedFile -> ParsedFile
   invalidateContext uri pf with (pf.context)
@@ -214,20 +219,31 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
         Left e => pure []
         Right trees => do
           let pfRules = convertRule importedBy pf.uri <$> trees.abstract.rules
-          let urisR = .value <$> fetchDeps trees.abstract
-          urisA <- traverse (convertUriFn pf.uri) urisR
-          deps <- traverse (jsgfGetParsedFile pfs) urisA
+          urisA <- fetchDepsA pf.uri trees.abstract
+          deps <- traverse (jsgfGetParsedFile pfs) (.value <$> urisA)
           depRules <- foldlM (\a, pf' => findRules pfs pf.uri pf' <&> (\rs => a ++ rs)) [] deps
           pure . nubBy (\r1, r2 => r1.name == r2.name && r1.uri == r2.uri && r1.importedBy /= r2.importedBy) $ pfRules `Prelude.Types.List.(++)` depRules
 
   generateErrors : ParsedFiles -> m ParsedFiles
   generateErrors pfs = do
-    (errors, pfs') <- runStateT [] $ traverse go pfs
-    case errors of
-      [] => pure pfs'
-      (x::xs) => throwError (x:::xs)
+    pf <- jsgfGetParsedFile pfs currentUri
+    case pf.result of
+      Left e => throwError e
+      Right trees => do
+        urisA <- fetchDepsA currentUri trees.abstract
+        errors <- foldlM (\a, c => generateDepErrors c >>= pure . (++) a) [] urisA
+        case errors of
+          [] => pure pfs
+          (x::xs) => throwError (x:::xs)
 
     where
+    generateDepErrors : WithOrigin (Uri Absolute) -> m (List (ParsingError JSGFToken))
+    generateDepErrors uri = do
+      pf <- jsgfGetParsedFile pfs uri.value
+      case pf.result of
+        Left errors => pure (forget errors)
+        Right trees => pure []
+
     go : ParsedFile -> StateT (List (ParsingError JSGFToken)) m ParsedFile
     go pf = do
       case pf.result of
@@ -264,11 +280,11 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
           Left e => do
             let pf = MkParsedFile { uri = uri.value, result = Left e, context = Nothing }
             put (upsertParsedFiles pfs pf)
+            throwError e
           Right trees => do
             let pf = MkParsedFile { uri = uri.value, result = Right trees, context = Nothing }
             put (upsertParsedFiles pfs pf)
-            let urisR = fetchDeps trees.abstract 
-            urisA <- lift $ traverse (\u => convertUriFn uri.value u.value >>= (\u' => pure $ MkWithOrigin { value = u', position = u.position })) urisR
+            urisA <- lift $ fetchDepsA uri.value trees.abstract 
             traverse_ (go Nothing) urisA
 
   validateContext : ParsedFile -> m ParsedFile
@@ -277,5 +293,5 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
 jsgfResolvePosition : MonadError ErrorResult m => Uri Absolute -> Position -> ParsedFiles -> m String
 jsgfResolvePosition uri (MkPosition line col) pfs = do
   pf <- jsgfGetParsedFile pfs uri
-  pure "GG" -- TODO
+  pure "" -- TODO
 

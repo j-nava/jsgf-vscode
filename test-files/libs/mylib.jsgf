@@ -5,3 +5,5 @@ grammar mylib;
 import <lib2.*>;
 
 public <librule1> = a | b | c;
+
+eeerr
