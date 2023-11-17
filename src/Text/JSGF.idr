@@ -260,11 +260,27 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
 
   parseWithDependencies : ParsedFiles -> m ParsedFiles
   parseWithDependencies pfs = do
-    execStateT pfs (go (Just currentFileData) (MkWithOrigin { value = currentUri, position = Nothing }))
+    (st, result) <- runStateT pfs (go (Just currentFileData) (MkWithOrigin { value = currentUri, position = Nothing }))
+    case result of
+      Nothing => pure st
+      Just e => throwError e
 
     where
 
-    go : Maybe FileData -> WithOrigin (Uri Absolute) -> StateT ParsedFiles m ()
+    combineErrors : List (Maybe ErrorResult, WithOrigin (Uri Absolute)) -> Maybe ErrorResult 
+    combineErrors errors =
+      let errors' = catMaybes $ (\(e, u) => (\e' => (e', u)) <$> e) <$> errors
+          converted = convert <$> errors'
+      in 
+        case converted of
+          [] => Nothing
+          (x::xs) => Just (x:::xs)
+
+      where
+      convert : (ErrorResult, WithOrigin (Uri Absolute)) -> ParsingError JSGFToken
+      convert (e, u) = Error "Error importing file \{show u.value}" u.position
+
+    go : Maybe FileData -> WithOrigin (Uri Absolute) -> StateT ParsedFiles m (Maybe ErrorResult)
     go filedata uri = do
       pfs <- get
       let isParsed = hasUri uri.value pfs 
@@ -275,17 +291,19 @@ jsgfParseCurrent convertUriFn readUriTextFn (currentUri, currentFileData) =
             Just fd => pure fd
             Nothing => throwError ((Error "Couldn't read file '\{show uri.value}'" Nothing) ::: Nil)
 
-      when (isJust filedata || not isParsed) $ do
-        case jsgfParse filedata' of
+      if (isJust filedata || not isParsed) 
+        then case jsgfParse filedata' of
           Left e => do
             let pf = MkParsedFile { uri = uri.value, result = Left e, context = Nothing }
             put (upsertParsedFiles pfs pf)
-            throwError e
+            pure (Just e)
           Right trees => do
             let pf = MkParsedFile { uri = uri.value, result = Right trees, context = Nothing }
             put (upsertParsedFiles pfs pf)
             urisA <- lift $ fetchDepsA uri.value trees.abstract 
-            traverse_ (go Nothing) urisA
+            results <- traverse (go Nothing) urisA
+            pure $ combineErrors (zip results urisA)
+        else pure Nothing
 
   validateContext : ParsedFile -> m ParsedFile
   validateContext = pure . id -- TODO: 1. validate undeclared rules; 2. validate unused rules (warning); 3. validate private rules (diff error msg)
